@@ -1,0 +1,73 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "zotero-display/library",
+  "title": "Nature Zotero Publications",
+  "category": "widgets",
+  "icon": "book-alt",
+  "description": "Display live Zotero library items as a searchable, filterable bibliography.",
+  "keywords": [
+    "zotero",
+    "bibliography",
+    "citations",
+    "references"
+  ],
+  "textdomain": "nature-zotero-publications",
+  "attributes": {
+    "libraryType": {
+      "type": "string",
+      "default": ""
+    },
+    "libraryId": {
+      "type": "string",
+      "default": ""
+    },
+    "collection": {
+      "type": "string",
+      "default": ""
+    },
+    "sortBy": {
+      "type": "string",
+      "default": "date"
+    },
+    "sortDirection": {
+      "type": "string",
+      "default": "desc"
+    },
+    "itemsPerPage": {
+      "type": "number",
+      "default": 10
+    },
+    "columns": {
+      "type": "number",
+      "default": 3
+    },
+    "showStats": {
+      "type": "boolean",
+      "default": true
+    },
+    "showFilters": {
+      "type": "boolean",
+      "default": true
+    },
+    "showSearch": {
+      "type": "boolean",
+      "default": true
+    },
+    "showAbstract": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "supports": {
+    "html": false,
+    "align": [
+      "wide",
+      "full"
+    ]
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./frontend.js"
+}

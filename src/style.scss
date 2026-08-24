@@ -1,0 +1,238 @@
+.zotero-display-block {
+	--zotero-blue: #174f78;
+	--zotero-border: #d6dbe0;
+	--zotero-muted: #56616a;
+
+	.screen-reader-text {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		clip-path: inset(50%);
+		border: 0;
+		white-space: nowrap;
+	}
+
+	:where(a, button, summary):focus-visible {
+		outline: 3px solid var(--zotero-blue);
+		outline-offset: 3px;
+	}
+
+	.zotero-display-stats {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.3rem;
+		margin: 0 0 0.75rem;
+		font-size: 0.9rem;
+		color: var(--zotero-muted);
+
+		.zotero-stat-value {
+			font-weight: 700;
+			color: inherit;
+		}
+	}
+
+	.zotero-display-controls {
+		display: grid;
+		gap: 0.65rem;
+		margin-bottom: 1.75rem;
+
+		.zotero-display-search,
+		.zotero-display-filter {
+			box-sizing: border-box;
+			width: 100%;
+			min-height: 2.75rem;
+			padding: 0.6rem 0.8rem;
+			border: 1px solid #1f2933;
+			border-radius: 0;
+			background: #fff;
+			color: #1f2933;
+			font: inherit;
+		}
+
+		.zotero-display-search {
+			max-width: none;
+		}
+
+		> label {
+			width: calc((100% - 1.3rem) / 3);
+		}
+
+		.zotero-display-search:focus,
+		.zotero-display-filter:focus {
+			outline: 3px solid var(--zotero-blue);
+			outline-offset: 2px;
+		}
+
+		.zotero-filter-row {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 0.65rem;
+
+			label {
+				display: block;
+			}
+		}
+	}
+
+	.zotero-year-heading {
+		margin: 2rem 0 0;
+		padding: 0 0 0.45rem;
+		border-bottom: 2px solid #273746;
+		font-size: clamp(1.35rem, 3vw, 1.8rem);
+		line-height: 1.2;
+	}
+
+	.zotero-publication {
+		padding: 1.25rem 0 1.35rem;
+		border-bottom: 1px solid var(--zotero-border);
+
+		p {
+			margin: 0;
+		}
+
+		.zotero-publication-authors {
+			margin-bottom: 0.25rem;
+			font-size: 0.95rem;
+			line-height: 1.45;
+		}
+
+		.zotero-publication-title {
+			margin: 0;
+			font-size: 1.05rem;
+			font-weight: 700;
+			line-height: 1.45;
+
+			a {
+				color: var(--zotero-blue);
+				text-decoration: none;
+			}
+
+			a:hover,
+			a:focus {
+				text-decoration: underline;
+			}
+		}
+
+		.zotero-type-badge {
+			display: inline-block;
+			margin-left: 0.35rem;
+			padding: 0.08rem 0.38rem;
+			background: var(--zotero-blue);
+			color: #fff;
+			font-size: 0.68rem;
+			font-weight: 700;
+			line-height: 1.4;
+			text-transform: uppercase;
+			vertical-align: 0.12em;
+		}
+
+		.zotero-publication-citation {
+			margin-top: 0.25rem;
+			color: var(--zotero-muted);
+			font-size: 0.92rem;
+			font-style: italic;
+			line-height: 1.45;
+		}
+
+		.zotero-publication-actions {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: baseline;
+			gap: 0.35rem 0.75rem;
+			margin-top: 0.55rem;
+			font-size: 0.86rem;
+
+			a:link,
+			summary {
+				color: var(--zotero-blue);
+				font-weight: 600;
+				cursor: pointer;
+			}
+		}
+
+		.zotero-publication-abstract {
+			display: inline;
+
+			&[open] {
+				flex-basis: 100%;
+			}
+
+			summary {
+				display: inline;
+			}
+
+			p {
+				margin: 0.6rem 0;
+				color: #303942;
+				font-size: 0.92rem;
+				font-weight: 400;
+				line-height: 1.55;
+			}
+		}
+
+		.zotero-publication-tags {
+			margin-top: 0.45rem;
+			color: var(--zotero-muted);
+			font-size: 0.82rem;
+			line-height: 1.45;
+
+			span {
+				font-weight: 700;
+			}
+		}
+	}
+
+	.zotero-display-pagination {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 0.75rem;
+		margin-top: 1.5rem;
+		font-size: 0.9rem;
+
+		button {
+			padding: 0.45rem 0.8rem;
+			border: 1px solid var(--zotero-blue);
+			border-radius: 0;
+			background: #fff;
+			color: var(--zotero-blue);
+			cursor: pointer;
+
+			&:disabled {
+				opacity: 0.45;
+				cursor: not-allowed;
+			}
+		}
+	}
+
+	.zotero-display-empty {
+		padding: 2rem 0;
+		text-align: center;
+		color: var(--zotero-muted);
+	}
+
+	.zotero-display-error {
+		padding: 1rem;
+		border: 1px solid #b32d2e;
+		color: #b32d2e;
+	}
+
+	@media (max-width: 680px) {
+
+		.zotero-display-controls > label {
+			width: 100%;
+		}
+
+		.zotero-display-controls .zotero-filter-row {
+			grid-template-columns: 1fr;
+		}
+
+		.zotero-display-pagination {
+			justify-content: center;
+		}
+	}
+}
