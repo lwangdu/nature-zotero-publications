@@ -20,6 +20,16 @@ The plugin synchronizes every top-level item from the configured Zotero library 
 
 Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses.
 
+Features include:
+
+* User libraries, group libraries, and individual collections.
+* Complete-library background synchronization beyond Zotero's 100-item response limit.
+* Server-rendered initial results with Interactivity API enhancements.
+* General search plus year, item-type, and author filters.
+* Keyboard-accessible, on-demand author suggestions.
+* DOI, source, Zotero, and citation-key links and metadata.
+* A completed local index that avoids extra Zotero requests for visitor interactions.
+
 == Installation ==
 
 1. Upload the plugin files to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP through the WordPress Plugins screen.
@@ -27,6 +37,8 @@ Private API keys remain on the server and are never included in scheduled-event 
 3. Open Settings > Nature Zotero Publications.
 4. Enter the Zotero library type, library ID, optional private API key, and cache duration.
 5. Add the Nature Zotero Publications block to a post or page.
+
+Large libraries synchronize in background batches through WordPress Cron. The last completed data remains available while a later refresh is running.
 
 == Frequently Asked Questions ==
 
@@ -46,6 +58,26 @@ Yes. Enter a Zotero collection key in the block settings to limit results to tha
 
 Yes. Zotero limits each API response to 100 items, so the first full-library synchronization runs in background batches. The existing cached results remain visible until the complete local index is ready.
 
+= How does the author filter work? =
+
+Enter at least two characters in the author field. The plugin requests a limited set of suggestions from its local creator index instead of embedding every author in the page. Suggestions support mouse and keyboard selection.
+
+= Why can the displayed count differ from Zotero? =
+
+Compare the display with Zotero's top-level "items in this view" count. Child attachments and annotations are excluded, while top-level standalone attachments are included.
+
+= What should I check if the library does not finish synchronizing? =
+
+Confirm that WordPress Cron is working and allow time for the 100-item background batches to complete. Opening a page containing the block ensures its source is scheduled.
+
+= How do I force a complete refresh? =
+
+Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This clears transient responses and the local index; the next page request schedules a new synchronization.
+
+= Why does Zotero return a 403 error? =
+
+Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
+
 == Changelog ==
 
 = 1.0.1 =
@@ -53,6 +85,8 @@ Yes. Zotero limits each API response to 100 items, so the first full-library syn
 * Add resumable background synchronization for complete Zotero libraries.
 * Improve frontend performance with the WordPress Interactivity API and cached local filtering.
 * Add an accessible on-demand author autocomplete without embedding the full author index.
+* Keep the private Zotero API key out of block context, scheduled events, and REST responses.
+* Raise the minimum supported WordPress version to 6.5.
 
 = 1.0.0 =
 
