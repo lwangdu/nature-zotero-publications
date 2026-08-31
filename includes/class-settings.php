@@ -89,6 +89,7 @@ class Settings {
 
 		// Clear caches automatically whenever core connection settings change.
 		Zotero_API::clear_all_caches();
+		Sync::clear_all();
 
 		return $output;
 	}
@@ -122,6 +123,7 @@ class Settings {
 		check_admin_referer( 'zotero_display_clear_cache' );
 
 		Zotero_API::clear_all_caches();
+		Sync::clear_all();
 
 		wp_safe_redirect( add_query_arg( 'zotero_cache_cleared', '1', wp_get_referer() ? wp_get_referer() : admin_url( 'options-general.php?page=nature-zotero-publications' ) ) );
 		exit;

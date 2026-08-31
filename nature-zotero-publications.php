@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Nature Zotero Publications
  * Description:       Display a searchable and filterable Zotero bibliography with publication metadata, links, and pagination.
- * Version:            1.0.0
- * Requires at least:  6.4
+ * Version:            1.0.1
+ * Requires at least:  6.5
  * Requires PHP:       7.4
  * Author:             Lobsang Wangdu
  * License:            GPL-2.0-or-later
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ZOTERO_DISPLAY_VERSION', '1.0.0' );
+define( 'ZOTERO_DISPLAY_VERSION', '1.0.1' );
 define( 'ZOTERO_DISPLAY_FILE', __FILE__ );
 define( 'ZOTERO_DISPLAY_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ZOTERO_DISPLAY_URL', plugin_dir_url( __FILE__ ) );
@@ -24,6 +24,7 @@ define( 'ZOTERO_DISPLAY_CACHE_GROUP', 'zotero_display' );
 
 require_once ZOTERO_DISPLAY_DIR . 'includes/class-zotero-api.php';
 require_once ZOTERO_DISPLAY_DIR . 'includes/class-settings.php';
+require_once ZOTERO_DISPLAY_DIR . 'includes/class-sync.php';
 require_once ZOTERO_DISPLAY_DIR . 'includes/class-rest-controller.php';
 require_once ZOTERO_DISPLAY_DIR . 'includes/class-block.php';
 
@@ -32,6 +33,7 @@ require_once ZOTERO_DISPLAY_DIR . 'includes/class-block.php';
  */
 function zotero_display_init() {
 	Zotero_Display\Zotero_API::register_hooks();
+	Zotero_Display\Sync::register_hooks();
 	Zotero_Display\Settings::instance();
 	Zotero_Display\REST_Controller::instance();
 	Zotero_Display\Block::instance();
@@ -39,7 +41,7 @@ function zotero_display_init() {
 add_action( 'plugins_loaded', 'zotero_display_init' );
 
 /**
- * Activation: nothing persistent needs to be created besides defaults.
+ * Activation: create defaults and the local Zotero index.
  */
 function zotero_display_activate() {
 	if ( false === get_option( 'zotero_display_settings' ) ) {
@@ -53,6 +55,8 @@ function zotero_display_activate() {
 			)
 		);
 	}
+
+	Zotero_Display\Sync::install();
 }
 register_activation_hook( __FILE__, 'zotero_display_activate' );
 
@@ -61,5 +65,6 @@ register_activation_hook( __FILE__, 'zotero_display_activate' );
  */
 function zotero_display_deactivate() {
 	Zotero_Display\Zotero_API::clear_all_caches();
+	Zotero_Display\Sync::unschedule();
 }
 register_deactivation_hook( __FILE__, 'zotero_display_deactivate' );

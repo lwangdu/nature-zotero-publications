@@ -1,11 +1,11 @@
 {
 	"name": "nature-zotero-publications",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Display live Zotero library data as a searchable, filterable Gutenberg bibliography.",
 	"private": true,
 	"scripts": {
-		"build": "wp-scripts build",
-		"start": "wp-scripts start",
+		"build": "wp-scripts build --experimental-modules",
+		"start": "wp-scripts start --experimental-modules",
 		"format": "wp-scripts format",
 		"lint:js": "wp-scripts lint-js",
 		"lint:css": "wp-scripts lint-style",
@@ -14,5 +14,8 @@
 	},
 	"devDependencies": {
 		"@wordpress/scripts": "^30.0.0"
+	},
+	"dependencies": {
+		"@wordpress/interactivity": "^6.54.0"
 	}
 }

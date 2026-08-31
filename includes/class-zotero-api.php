@@ -15,6 +15,7 @@ defined( 'ABSPATH' ) || exit;
 class Zotero_API {
 
 	const API_BASE     = 'https://api.zotero.org';
+	const MAX_ITEMS    = 2000;
 	const REFRESH_HOOK = 'zotero_display_refresh_cache';
 
 	/**
@@ -44,18 +45,19 @@ class Zotero_API {
 	 * @return array|\WP_Error Array of normalized items, or WP_Error on failure.
 	 */
 	public static function get_items( array $args ) {
-		$defaults = array(
+		$defaults      = array(
 			'library_type'  => 'user',
 			'library_id'    => '',
 			'api_key'       => '',
 			'collection'    => '',
 			'sort'          => 'date',
 			'direction'     => 'desc',
-			'limit'         => 1000,
+			'limit'         => self::MAX_ITEMS,
 			'item_type'     => '',
 			'cache_minutes' => 60,
 		);
-		$args     = wp_parse_args( $args, $defaults );
+		$args          = wp_parse_args( $args, $defaults );
+		$args['limit'] = min( self::MAX_ITEMS, max( 1, (int) $args['limit'] ) );
 
 		if ( empty( $args['library_id'] ) ) {
 			return new \WP_Error( 'zotero_missing_library_id', __( 'A Zotero library ID is required.', 'nature-zotero-publications' ) );
@@ -147,81 +149,104 @@ class Zotero_API {
 	 * @return array|\WP_Error
 	 */
 	private static function fetch_from_api( array $args ) {
-		$library_segment = ( 'group' === $args['library_type'] ) ? 'groups' : 'users';
-
-		$path = sprintf( '/%s/%s/items', $library_segment, rawurlencode( $args['library_id'] ) );
-		if ( ! empty( $args['collection'] ) ) {
-			$path = sprintf( '/%s/%s/collections/%s/items', $library_segment, rawurlencode( $args['library_id'] ), rawurlencode( $args['collection'] ) );
-		}
-
 		$per_page  = min( 100, max( 1, (int) $args['limit'] ) );
 		$max_items = max( $per_page, (int) $args['limit'] ); // allow requesting more than 100 by paginating.
 		$all_items = array();
 		$start     = 0;
 
 		do {
-			$query = array(
-				'format'    => 'json',
-				'include'   => 'data',
-				'sort'      => sanitize_key( $args['sort'] ),
-				'direction' => ( 'asc' === $args['direction'] ) ? 'asc' : 'desc',
-				'limit'     => $per_page,
-				'start'     => $start,
-			);
-
-			if ( ! empty( $args['item_type'] ) ) {
-				$query['itemType'] = sanitize_text_field( $args['item_type'] );
+			$page = self::fetch_page( $args, $start, $per_page );
+			if ( is_wp_error( $page ) ) {
+				return $page;
 			}
 
-			$url = add_query_arg( $query, self::API_BASE . $path );
-
-			$request_args = array(
-				'timeout' => 15,
-				'headers' => array(
-					'Zotero-API-Version' => '3',
-				),
-			);
-			if ( ! empty( $args['api_key'] ) ) {
-				$request_args['headers']['Authorization'] = 'Bearer ' . $args['api_key'];
-			}
-
-			$response = wp_remote_get( $url, $request_args );
-
-			if ( is_wp_error( $response ) ) {
-				return $response;
-			}
-
-			$code = wp_remote_retrieve_response_code( $response );
-			if ( $code < 200 || $code >= 300 ) {
-				return new \WP_Error(
-					'zotero_api_error',
-					sprintf(
-						/* translators: %d: HTTP status code */
-						__( 'Zotero API returned an error (HTTP %d).', 'nature-zotero-publications' ),
-						$code
-					)
-				);
-			}
-
-			$body = json_decode( wp_remote_retrieve_body( $response ), true );
-			if ( ! is_array( $body ) ) {
-				return new \WP_Error( 'zotero_invalid_response', __( 'Zotero API returned an unreadable response.', 'nature-zotero-publications' ) );
-			}
-
-			foreach ( $body as $entry ) {
-				$normalized = self::normalize_item( $entry, $args );
-				if ( $normalized ) {
-					$all_items[] = $normalized;
-				}
-			}
+			$all_items = array_merge( $all_items, $page['items'] );
 
 			$start                += $per_page;
-			$got                   = count( $body );
+			$got                   = $page['raw_count'];
 			$normalized_item_count = count( $all_items );
 
 		} while ( $got === $per_page && $normalized_item_count < $max_items );
 
 		return array_slice( $all_items, 0, $max_items );
+	}
+
+	/**
+	 * Fetch one page of top-level Zotero items for a background sync.
+	 *
+	 * @param array $args  Zotero query arguments.
+	 * @param int   $start Zero-based Zotero result offset.
+	 * @param int   $limit Number of items to request, capped at 100 by Zotero.
+	 * @return array|\WP_Error Page data or an error.
+	 */
+	public static function fetch_page( array $args, $start = 0, $limit = 100 ) {
+		$library_segment = ( 'group' === $args['library_type'] ) ? 'groups' : 'users';
+		$path            = sprintf( '/%s/%s/items/top', $library_segment, rawurlencode( $args['library_id'] ) );
+
+		if ( ! empty( $args['collection'] ) ) {
+			$path = sprintf( '/%s/%s/collections/%s/items/top', $library_segment, rawurlencode( $args['library_id'] ), rawurlencode( $args['collection'] ) );
+		}
+
+		$query = array(
+			'format'    => 'json',
+			'include'   => 'data',
+			'sort'      => sanitize_key( $args['sort'] ),
+			'direction' => ( 'asc' === $args['direction'] ) ? 'asc' : 'desc',
+			'limit'     => min( 100, max( 1, (int) $limit ) ),
+			'start'     => max( 0, (int) $start ),
+		);
+
+		if ( ! empty( $args['item_type'] ) ) {
+			$query['itemType'] = sanitize_text_field( $args['item_type'] );
+		}
+
+		$request_args = array(
+			'timeout' => 20,
+			'headers' => array(
+				'Zotero-API-Version' => '3',
+			),
+		);
+		if ( ! empty( $args['api_key'] ) ) {
+			$request_args['headers']['Authorization'] = 'Bearer ' . $args['api_key'];
+		}
+
+		$response = wp_remote_get( add_query_arg( $query, self::API_BASE . $path ), $request_args );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			return new \WP_Error(
+				'zotero_api_error',
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Zotero API returned an error (HTTP %d).', 'nature-zotero-publications' ),
+					$code
+				),
+				array( 'status' => $code )
+			);
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $body ) ) {
+			return new \WP_Error( 'zotero_invalid_response', __( 'Zotero API returned an unreadable response.', 'nature-zotero-publications' ) );
+		}
+
+		$items = array();
+		foreach ( $body as $entry ) {
+			$normalized = self::normalize_item( $entry, $args );
+			if ( $normalized ) {
+				$items[] = $normalized;
+			}
+		}
+
+		return array(
+			'items'                 => $items,
+			'raw_count'             => count( $body ),
+			'total'                 => absint( wp_remote_retrieve_header( $response, 'total-results' ) ),
+			'last_modified_version' => absint( wp_remote_retrieve_header( $response, 'last-modified-version' ) ),
+		);
 	}
 
 	/**
@@ -358,7 +383,7 @@ class Zotero_API {
 	 */
 	private static function build_cache_key( array $args ) {
 		$relevant = array(
-			'normalization_version' => 6,
+			'normalization_version' => 7,
 			'library_type'          => $args['library_type'],
 			'library_id'            => $args['library_id'],
 			'collection'            => $args['collection'],

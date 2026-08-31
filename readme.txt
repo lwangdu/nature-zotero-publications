@@ -1,9 +1,9 @@
 === Nature Zotero Publications ===
 Contributors: lwangdu
 Tags: zotero, bibliography, citations, gutenberg, publications
-Requires at least: 6.4
+Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,9 +14,11 @@ Display a searchable and filterable Zotero bibliography with authors, dates, DOI
 
 Nature Zotero Publications displays live Zotero library data in a dynamic Gutenberg block. Publications are grouped by year and can include authors, linked titles, publication details, item-type badges, dates, DOI links, citation keys, source URLs, tags, and abstracts.
 
-The block includes search, year/type/author filters, entry counts, and pagination. Initial results are rendered on the server and progressively enhanced in the browser.
+The block includes search, year/type/author filters, entry counts, and pagination. Initial results are rendered on the server and progressively enhanced with the WordPress Interactivity API. Author suggestions are requested only after a visitor types at least two characters, avoiding a large inline author list.
 
-Zotero API responses are cached with WordPress transients. Private API keys remain on the server and are never included in block markup or REST responses.
+The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the completed local index. A transient-backed fallback remains available while the first full sync runs.
+
+Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses.
 
 == Installation ==
 
@@ -40,7 +42,17 @@ No. The key is used only for server-side requests and is not returned by the plu
 
 Yes. Enter a Zotero collection key in the block settings to limit results to that collection.
 
+= Does the plugin display the complete library? =
+
+Yes. Zotero limits each API response to 100 items, so the first full-library synchronization runs in background batches. The existing cached results remain visible until the complete local index is ready.
+
 == Changelog ==
+
+= 1.0.1 =
+
+* Add resumable background synchronization for complete Zotero libraries.
+* Improve frontend performance with the WordPress Interactivity API and cached local filtering.
+* Add an accessible on-demand author autocomplete without embedding the full author index.
 
 = 1.0.0 =
 

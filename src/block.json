@@ -56,10 +56,11 @@
 	},
 	"supports": {
 		"html": false,
-		"align": [ "wide", "full" ]
+		"align": [ "wide", "full" ],
+		"interactivity": true
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
 	"style": "file:./style-index.css",
-	"viewScript": "file:./frontend.js"
+	"viewScriptModule": "file:./frontend.js"
 }

@@ -75,6 +75,46 @@
 			label {
 				display: block;
 			}
+
+			.zotero-author-combobox {
+				position: relative;
+			}
+
+			.zotero-author-results {
+				position: absolute;
+				z-index: 10;
+				top: calc(100% + 0.25rem);
+				left: 0;
+				width: 100%;
+				max-height: 18rem;
+				padding: 0;
+				margin: 0;
+				overflow-y: auto;
+				border: 1px solid #1f2933;
+				background: #fff;
+				box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 18%);
+				list-style: none;
+
+				li {
+					margin: 0;
+				}
+
+				button {
+					width: 100%;
+					padding: 0.6rem 0.8rem;
+					border: 0;
+					background: #fff;
+					color: #1f2933;
+					font: inherit;
+					text-align: left;
+					cursor: pointer;
+
+					&:hover,
+					&:focus-visible {
+						background: #e8f1f7;
+					}
+				}
+			}
 		}
 	}
 
@@ -194,7 +234,8 @@
 		margin-top: 1.5rem;
 		font-size: 0.9rem;
 
-		button {
+		.zotero-page-prev,
+		.zotero-page-next {
 			padding: 0.45rem 0.8rem;
 			border: 1px solid var(--zotero-blue);
 			border-radius: 0;

@@ -52,28 +52,6 @@ class Block {
 				'render_callback' => array( $this, 'render' ),
 			)
 		);
-
-		// The block.json "viewScript" handle is auto-generated; hook in to localize it
-		// once WordPress registers it, so frontend.js has the REST URL it needs.
-		add_action( 'wp_enqueue_scripts', array( $this, 'localize_view_script' ) );
-	}
-
-	/**
-	 * Pass the REST URL and translated interface text to frontend.js.
-	 */
-	public function localize_view_script() {
-		$handle = generate_block_asset_handle( 'zotero-display/library', 'viewScript' );
-		if ( wp_script_is( $handle, 'registered' ) ) {
-			wp_localize_script(
-				$handle,
-				'zoteroDisplaySettings',
-				array(
-					'restUrl'     => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
-					'nonce'       => is_user_logged_in() ? wp_create_nonce( 'wp_rest' ) : '',
-					'newTabLabel' => __( 'opens in a new tab', 'nature-zotero-publications' ),
-				)
-			);
-		}
 	}
 
 	/**
@@ -111,7 +89,7 @@ class Block {
 			'collection'    => $attributes['collection'],
 			'sort'          => $attributes['sortBy'],
 			'direction'     => $attributes['sortDirection'],
-			'limit'         => 1000,
+			'limit'         => Zotero_API::MAX_ITEMS,
 			'cache_minutes' => $settings['cache_minutes'],
 		);
 
@@ -122,28 +100,71 @@ class Block {
 			return '';
 		}
 
-		$items = Zotero_API::get_items( $query_args );
+		$per_page    = max( 1, (int) $attributes['itemsPerPage'] );
+		$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, true, false );
+		Sync::ensure_scheduled( $query_args );
 
-		if ( is_wp_error( $items ) ) {
-			if ( current_user_can( 'edit_posts' ) ) {
-				return '<p class="zotero-display-error">' . esc_html(
-					sprintf(
-					/* translators: %s: error message */
-						__( 'Nature Zotero Publications error: %s', 'nature-zotero-publications' ),
-						$items->get_error_message()
-					)
-				) . '</p>';
+		if ( false !== $sync_result ) {
+			$first_page  = $sync_result['items'];
+			$total       = $sync_result['pagination']['total_items'];
+			$total_pages = $sync_result['pagination']['total_pages'];
+			$stats       = $sync_result['stats'];
+		} else {
+			$items = Zotero_API::get_items( $query_args );
+
+			if ( is_wp_error( $items ) ) {
+				if ( current_user_can( 'edit_posts' ) ) {
+					return '<p class="zotero-display-error">' . esc_html(
+						sprintf(
+						/* translators: %s: error message */
+							__( 'Nature Zotero Publications error: %s', 'nature-zotero-publications' ),
+							$items->get_error_message()
+						)
+					) . '</p>';
+				}
+				return '';
 			}
-			return '';
+
+			$total       = count( $items );
+			$first_page  = array_slice( $items, 0, $per_page );
+			$total_pages = (int) ceil( $total / $per_page );
+			$stats       = REST_Controller::compute_stats( $items, true, false );
 		}
 
-		$per_page    = max( 1, (int) $attributes['itemsPerPage'] );
-		$total       = count( $items );
-		$first_page  = array_slice( $items, 0, $per_page );
-		$total_pages = (int) ceil( $total / $per_page );
-		$stats       = REST_Controller::compute_stats( $items );
+		$context = array(
+			'restUrl'           => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'libraryType'       => $query_args['library_type'],
+			'libraryId'         => $query_args['library_id'],
+			'collection'        => $attributes['collection'],
+			'sortBy'            => $attributes['sortBy'],
+			'sortDirection'     => $attributes['sortDirection'],
+			'perPage'           => $per_page,
+			'showAbstract'      => (bool) $attributes['showAbstract'],
+			'page'              => 1,
+			'totalPages'        => $total_pages,
+			'totalItems'        => $total,
+			'search'            => '',
+			'filterType'        => '',
+			'filterYear'        => '',
+			'filterAuthor'      => '',
+			'authorQuery'       => '',
+			'authorSuggestions' => array(),
+			'authorOpen'        => false,
+			'activeAuthorIndex' => -1,
+			'items'             => array(),
+			'hasFetched'        => false,
+			'isLoading'         => false,
+			'isEmpty'           => false,
+			'message'           => __( 'No items match your filters.', 'nature-zotero-publications' ),
+			'noResultsMessage'  => __( 'No items match your filters.', 'nature-zotero-publications' ),
+			'errorMessage'      => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
+			'undatedLabel'      => __( 'Undated', 'nature-zotero-publications' ),
+			'inLabel'           => __( 'In:', 'nature-zotero-publications' ),
+			'requestId'         => 0,
+			'authorRequestId'   => 0,
+		);
 
-		$wrapper_attrs = get_block_wrapper_attributes(
+		$wrapper_attrs     = get_block_wrapper_attributes(
 			array(
 				'class'               => 'zotero-display-block',
 				'data-zotero-display' => 'true',
@@ -159,14 +180,16 @@ class Block {
 				'data-show-abstract'  => $attributes['showAbstract'] ? '1' : '0',
 			)
 		);
+		$author_input_id   = wp_unique_id( 'zotero-author-' );
+		$author_results_id = wp_unique_id( 'zotero-author-results-' );
 
 		ob_start();
 		?>
-		<div <?php echo $wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+		<div <?php echo $wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> data-wp-interactive="zotero-display" <?php echo wp_interactivity_data_wp_context( $context ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core generates an escaped directive attribute. ?>>
 
 			<?php if ( $attributes['showStats'] ) : ?>
 				<div class="zotero-display-stats" data-zotero-stats role="status" aria-live="polite" aria-atomic="true">
-					<span class="zotero-stat-value" data-zotero-entry-count><?php echo esc_html( $total ); ?></span>
+					<span class="zotero-stat-value" data-zotero-entry-count data-wp-text="context.totalItems"><?php echo esc_html( $total ); ?></span>
 					<span class="zotero-stat-label"><?php esc_html_e( 'entries', 'nature-zotero-publications' ); ?></span>
 				</div>
 			<?php endif; ?>
@@ -174,23 +197,35 @@ class Block {
 			<?php if ( $attributes['showSearch'] || $attributes['showFilters'] ) : ?>
 				<div class="zotero-display-controls" data-zotero-controls>
 					<?php if ( $attributes['showSearch'] ) : ?>
-						<label><span class="screen-reader-text"><?php esc_html_e( 'Search publications', 'nature-zotero-publications' ); ?></span><input type="search" class="zotero-display-search" data-zotero-search placeholder="<?php esc_attr_e( 'Search publications…', 'nature-zotero-publications' ); ?>" /></label>
+						<label><span class="screen-reader-text"><?php esc_html_e( 'Search publications', 'nature-zotero-publications' ); ?></span><input type="search" class="zotero-display-search" placeholder="<?php esc_attr_e( 'Search publications…', 'nature-zotero-publications' ); ?>" data-wp-bind--value="context.search" data-wp-on--input="actions.search" /></label>
 					<?php endif; ?>
 					<?php if ( $attributes['showFilters'] ) : ?>
 						<div class="zotero-filter-row">
-							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by year', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-zotero-filter-year><option value=""><?php esc_html_e( 'All years', 'nature-zotero-publications' ); ?></option></select></label>
-							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by type', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-zotero-filter-type><option value=""><?php esc_html_e( 'All types', 'nature-zotero-publications' ); ?></option></select></label>
-							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by author', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-zotero-filter-author><option value=""><?php esc_html_e( 'All authors', 'nature-zotero-publications' ); ?></option></select></label>
+							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by year', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-wp-on--change="actions.filterYear"><option value=""><?php esc_html_e( 'All years', 'nature-zotero-publications' ); ?></option>
+							<?php
+							foreach ( $stats['available_years'] as $facet ) :
+								?>
+								<option value="<?php echo esc_attr( $facet['value'] ); ?>"><?php echo esc_html( $facet['value'] . ' (' . $facet['count'] . ')' ); ?></option><?php endforeach; ?></select></label>
+							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by type', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-wp-on--change="actions.filterType"><option value=""><?php esc_html_e( 'All types', 'nature-zotero-publications' ); ?></option>
+							<?php
+							foreach ( $stats['available_types'] as $facet ) :
+								?>
+								<option value="<?php echo esc_attr( $facet['value'] ); ?>"><?php echo esc_html( $facet['label'] . ' (' . $facet['count'] . ')' ); ?></option><?php endforeach; ?></select></label>
+							<div class="zotero-author-combobox">
+								<label for="<?php echo esc_attr( $author_input_id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Filter by author', 'nature-zotero-publications' ); ?></span></label>
+								<input id="<?php echo esc_attr( $author_input_id ); ?>" type="search" class="zotero-display-filter" placeholder="<?php esc_attr_e( 'Search authors…', 'nature-zotero-publications' ); ?>" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="<?php echo esc_attr( $author_results_id ); ?>" data-wp-bind--aria-expanded="context.authorOpen" data-wp-bind--value="context.authorQuery" data-wp-on--input="actions.searchAuthors" data-wp-on--keydown="actions.authorKeydown" />
+								<ul id="<?php echo esc_attr( $author_results_id ); ?>" class="zotero-author-results" role="listbox" data-wp-bind--hidden="!context.authorOpen">
+									<template data-wp-each--author="context.authorSuggestions" data-wp-each-key="context.author.value">
+										<li><button type="button" role="option" data-wp-on--click="actions.selectAuthor" data-wp-on--keydown="actions.selectAuthorKeydown"><span data-wp-text="context.author.value"></span> <span aria-hidden="true">(<span data-wp-text="context.author.count"></span>)</span></button></li>
+									</template>
+								</ul>
+							</div>
 						</div>
 					<?php endif; ?>
 				</div>
 			<?php endif; ?>
 
-			<?php if ( $attributes['showFilters'] ) : ?>
-				<script type="application/json" data-zotero-facets><?php echo wp_json_encode( $stats, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON is hex-escaped for safe script embedding. ?></script>
-			<?php endif; ?>
-
-			<div class="zotero-publication-list" data-zotero-grid>
+			<div class="zotero-publication-list" data-zotero-grid data-wp-bind--aria-busy="context.isLoading" data-wp-bind--hidden="context.hasFetched">
 				<?php $current_year = null; ?>
 				<?php foreach ( $first_page as $item ) : ?>
 					<?php if ( $current_year !== $item['date_year'] ) : ?>
@@ -201,22 +236,43 @@ class Block {
 				<?php endforeach; ?>
 			</div>
 
-			<nav class="zotero-display-pagination" data-zotero-pagination data-total-pages="<?php echo esc_attr( $total_pages ); ?>" data-current-page="1" aria-label="<?php esc_attr_e( 'Publication pagination', 'nature-zotero-publications' ); ?>" <?php echo $total_pages <= 1 ? 'hidden' : ''; ?>>
-					<button type="button" class="zotero-page-prev" data-zotero-page-prev disabled><?php esc_html_e( 'Previous', 'nature-zotero-publications' ); ?></button>
+			<div class="zotero-publication-list" data-wp-bind--aria-busy="context.isLoading" data-wp-bind--hidden="!context.hasFetched">
+				<template data-wp-each--item="context.items" data-wp-each-key="context.item.key">
+					<div>
+						<h2 class="zotero-year-heading" data-wp-bind--hidden="!context.item.showYearHeading" data-wp-text="context.item.yearLabel"></h2>
+						<article class="zotero-publication" data-wp-bind--data-zotero-item-type="context.item.item_type" data-wp-bind--data-zotero-item-year="context.item.date_year">
+							<p class="zotero-publication-authors" data-wp-text="context.item.creator_str"></p>
+							<h3 class="zotero-publication-title"><a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.linkHref"><span data-wp-text="context.item.title"></span><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a> <span class="zotero-type-badge" data-wp-bind--hidden="!context.item.item_type_label" data-wp-text="context.item.item_type_label"></span></h3>
+							<p class="zotero-publication-citation" data-wp-bind--hidden="!context.item.citationText" data-wp-text="context.item.citationText"></p>
+							<div class="zotero-publication-actions">
+								<details class="zotero-publication-abstract" data-wp-bind--hidden="!context.item.showAbstract"><summary><?php esc_html_e( 'Abstract', 'nature-zotero-publications' ); ?></summary><p data-wp-text="context.item.abstract"></p></details>
+								<a target="_blank" rel="noopener noreferrer" data-wp-bind--hidden="!context.item.doi" data-wp-bind--href="context.item.doi_url"><?php esc_html_e( 'DOI', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
+								<a target="_blank" rel="noopener noreferrer" data-wp-bind--hidden="!context.item.source_url" data-wp-bind--href="context.item.source_url"><?php esc_html_e( 'Source', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
+								<a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.zotero_link"><?php esc_html_e( 'Zotero', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
+								<span data-wp-bind--hidden="!context.item.citation_key"><?php esc_html_e( 'Citation key:', 'nature-zotero-publications' ); ?> <code data-wp-text="context.item.citation_key"></code></span>
+							</div>
+							<p class="zotero-publication-tags" data-wp-bind--hidden="!context.item.tagsText"><span><?php esc_html_e( 'Tags:', 'nature-zotero-publications' ); ?></span> <span data-wp-text="context.item.tagsText"></span></p>
+						</article>
+					</div>
+				</template>
+			</div>
+
+			<nav class="zotero-display-pagination" aria-label="<?php esc_attr_e( 'Publication pagination', 'nature-zotero-publications' ); ?>" data-wp-bind--hidden="state.isPaginationHidden">
+					<button type="button" class="zotero-page-prev" data-wp-on--click="actions.previousPage" data-wp-bind--disabled="state.isPreviousDisabled"><?php esc_html_e( 'Previous', 'nature-zotero-publications' ); ?></button>
 					<span class="zotero-page-status" data-zotero-page-status role="status" aria-live="polite" aria-atomic="true">
 						<?php
 						printf(
 							/* translators: 1: current page 2: total pages */
 							esc_html__( 'Page %1$s of %2$s', 'nature-zotero-publications' ),
-							'<span data-zotero-current-page>1</span>',
-							'<span data-zotero-total-pages>' . esc_html( $total_pages ) . '</span>'
+							'<span data-wp-text="context.page">1</span>',
+							'<span data-wp-text="context.totalPages">' . esc_html( $total_pages ) . '</span>'
 						);
 						?>
 					</span>
-					<button type="button" class="zotero-page-next" data-zotero-page-next <?php disabled( $total_pages <= 1 ); ?>><?php esc_html_e( 'Next', 'nature-zotero-publications' ); ?></button>
+					<button type="button" class="zotero-page-next" data-wp-on--click="actions.nextPage" data-wp-bind--disabled="state.isNextDisabled"><?php esc_html_e( 'Next', 'nature-zotero-publications' ); ?></button>
 			</nav>
 
-			<div class="zotero-display-empty" data-zotero-empty role="status" aria-live="polite" aria-atomic="true" hidden><?php esc_html_e( 'No items match your filters.', 'nature-zotero-publications' ); ?></div>
+			<div class="zotero-display-empty" role="status" aria-live="polite" aria-atomic="true" data-wp-bind--hidden="!context.isEmpty" data-wp-text="context.message"><?php esc_html_e( 'No items match your filters.', 'nature-zotero-publications' ); ?></div>
 		</div>
 		<?php
 		return ob_get_clean();

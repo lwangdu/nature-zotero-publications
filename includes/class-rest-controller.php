@@ -57,20 +57,49 @@ class REST_Controller {
 				'callback'            => array( $this, 'get_items' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'library_type'   => array( 'type' => 'string' ),
-					'library_id'     => array( 'type' => 'string' ),
-					'collection'     => array( 'type' => 'string' ),
-					'sort'           => array( 'type' => 'string' ),
-					'direction'      => array( 'type' => 'string' ),
-					'limit'          => array( 'type' => 'integer' ),
-					'item_type'      => array( 'type' => 'string' ),
-					'search'         => array( 'type' => 'string' ),
-					'filter_type'    => array( 'type' => 'string' ),
-					'filter_year'    => array( 'type' => 'string' ),
-					'filter_author'  => array( 'type' => 'string' ),
-					'include_facets' => array( 'type' => 'boolean' ),
-					'page'           => array( 'type' => 'integer' ),
-					'per_page'       => array( 'type' => 'integer' ),
+					'library_type'    => array( 'type' => 'string' ),
+					'library_id'      => array( 'type' => 'string' ),
+					'collection'      => array( 'type' => 'string' ),
+					'sort'            => array( 'type' => 'string' ),
+					'direction'       => array( 'type' => 'string' ),
+					'limit'           => array( 'type' => 'integer' ),
+					'item_type'       => array( 'type' => 'string' ),
+					'search'          => array( 'type' => 'string' ),
+					'filter_type'     => array( 'type' => 'string' ),
+					'filter_year'     => array( 'type' => 'string' ),
+					'filter_author'   => array( 'type' => 'string' ),
+					'include_facets'  => array( 'type' => 'boolean' ),
+					'include_authors' => array( 'type' => 'boolean' ),
+					'page'            => array( 'type' => 'integer' ),
+					'per_page'        => array( 'type' => 'integer' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/authors',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_authors' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'library_type' => array( 'type' => 'string' ),
+					'library_id'   => array( 'type' => 'string' ),
+					'collection'   => array( 'type' => 'string' ),
+					'sort'         => array( 'type' => 'string' ),
+					'direction'    => array( 'type' => 'string' ),
+					'item_type'    => array( 'type' => 'string' ),
+					'search'       => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'limit'        => array(
+						'type'    => 'integer',
+						'default' => 30,
+						'minimum' => 1,
+						'maximum' => 50,
+					),
 				),
 			)
 		);
@@ -99,7 +128,7 @@ class REST_Controller {
 			'collection'    => $collection ? $collection : '',
 			'sort'          => $sort ? $sort : 'date',
 			'direction'     => $direction ? $direction : 'desc',
-			'limit'         => $request->get_param( 'limit' ) ? (int) $request->get_param( 'limit' ) : 1000,
+			'limit'         => $request->get_param( 'limit' ) ? (int) $request->get_param( 'limit' ) : Zotero_API::MAX_ITEMS,
 			'item_type'     => $item_type ? $item_type : '',
 			'cache_minutes' => $settings['cache_minutes'],
 		);
@@ -126,6 +155,35 @@ class REST_Controller {
 			);
 		}
 
+		$search             = $request->get_param( 'search' );
+		$filter_type        = $request->get_param( 'filter_type' );
+		$filter_year        = $request->get_param( 'filter_year' );
+		$filter_author      = $request->get_param( 'filter_author' );
+		$include_facets     = $request->get_param( 'include_facets' );
+		$include_facets     = null === $include_facets || rest_sanitize_boolean( $include_facets );
+		$include_authors    = rest_sanitize_boolean( $request->get_param( 'include_authors' ) );
+		$requested_page     = $request->get_param( 'page' );
+		$requested_per_page = $request->get_param( 'per_page' );
+		$page               = max( 1, $requested_page ? (int) $requested_page : 1 );
+		$per_page           = max( 1, $requested_per_page ? (int) $requested_per_page : 10 );
+		$sync_result        = Sync::get_results(
+			$query_args,
+			array(
+				'search' => $search,
+				'type'   => $filter_type,
+				'year'   => $filter_year,
+				'author' => $filter_author,
+			),
+			$page,
+			$per_page,
+			$include_facets,
+			$include_authors
+		);
+
+		if ( false !== $sync_result ) {
+			return rest_ensure_response( $sync_result );
+		}
+
 		$items = Zotero_API::get_items( $query_args );
 
 		if ( is_wp_error( $items ) ) {
@@ -133,11 +191,6 @@ class REST_Controller {
 		}
 
 		// --- In-request filtering (search, type, year, author) ---
-		$search        = $request->get_param( 'search' );
-		$filter_type   = $request->get_param( 'filter_type' );
-		$filter_year   = $request->get_param( 'filter_year' );
-		$filter_author = $request->get_param( 'filter_author' );
-
 		if ( $search ) {
 			$needle = mb_strtolower( $search );
 			$items  = array_values(
@@ -199,18 +252,12 @@ class REST_Controller {
 		}
 
 		// --- Stats (computed on the filtered set, before pagination) ---
-		$include_facets = $request->get_param( 'include_facets' );
-		$include_facets = null === $include_facets || rest_sanitize_boolean( $include_facets );
-		$stats          = self::compute_stats( $items, $include_facets );
+		$stats = self::compute_stats( $items, $include_facets, $include_authors );
 
 		// --- Pagination ---
-		$requested_page     = $request->get_param( 'page' );
-		$requested_per_page = $request->get_param( 'per_page' );
-		$page               = max( 1, $requested_page ? (int) $requested_page : 1 );
-		$per_page           = max( 1, $requested_per_page ? (int) $requested_per_page : 10 );
-		$offset             = ( $page - 1 ) * $per_page;
-		$total              = count( $items );
-		$paged              = array_slice( $items, $offset, $per_page );
+		$offset = ( $page - 1 ) * $per_page;
+		$total  = count( $items );
+		$paged  = array_slice( $items, $offset, $per_page );
 
 		return rest_ensure_response(
 			array(
@@ -227,17 +274,51 @@ class REST_Controller {
 	}
 
 	/**
+	 * GET /zotero-display/v1/authors
+	 *
+	 * Return a small, on-demand set of matching author suggestions from the
+	 * completed local index instead of embedding the full author list in HTML.
+	 *
+	 * @param \WP_REST_Request $request Request object.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function get_authors( \WP_REST_Request $request ) {
+		$query_args = $this->resolve_query_args( $request );
+		$search     = (string) $request->get_param( 'search' );
+
+		if ( empty( $query_args['library_id'] ) ) {
+			return new \WP_Error(
+				'zotero_display_no_library',
+				__( 'No Zotero library ID configured.', 'nature-zotero-publications' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( 2 > mb_strlen( $search ) ) {
+			return rest_ensure_response( array( 'authors' => array() ) );
+		}
+
+		$authors = Sync::get_authors( $query_args, $search, $request->get_param( 'limit' ) );
+		if ( false === $authors ) {
+			return rest_ensure_response( array( 'authors' => array() ) );
+		}
+
+		return rest_ensure_response( array( 'authors' => $authors ) );
+	}
+
+	/**
 	 * Compute result statistics and, when requested, filter facets.
 	 *
 	 * The block uses this method while rendering the initial HTML. Frontend
 	 * REST requests can skip facets because those controls are already present,
 	 * avoiding repeated aggregation and a large response payload.
 	 *
-	 * @param array $items          Normalized Zotero items.
-	 * @param bool  $include_facets Whether to include type, year, and author facets.
+	 * @param array $items           Normalized Zotero items.
+	 * @param bool  $include_facets  Whether to include type and year facets.
+	 * @param bool  $include_authors Whether to include the potentially large author facet.
 	 * @return array Result statistics.
 	 */
-	public static function compute_stats( $items, $include_facets = true ) {
+	public static function compute_stats( $items, $include_facets = true, $include_authors = false ) {
 		$stats = array(
 			'total_items' => count( $items ),
 			'total_types' => count( array_unique( array_filter( wp_list_pluck( $items, 'item_type' ) ) ) ),
@@ -245,9 +326,11 @@ class REST_Controller {
 		);
 
 		if ( $include_facets ) {
-			$stats['available_types']   = self::compute_type_facets( $items );
-			$stats['available_years']   = self::compute_available_facets( $items, 'date_year' );
-			$stats['available_authors'] = self::compute_list_facets( $items, 'creators' );
+			$stats['available_types'] = self::compute_type_facets( $items );
+			$stats['available_years'] = self::compute_available_facets( $items, 'date_year' );
+			if ( $include_authors ) {
+				$stats['available_authors'] = self::compute_list_facets( $items, 'creators' );
+			}
 		}
 
 		return $stats;

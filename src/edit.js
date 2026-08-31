@@ -160,6 +160,7 @@ export default function Edit( { attributes, setAttributes } ) {
 				direction: sortDirection,
 				per_page: itemsPerPage,
 				page: 1,
+				include_facets: false,
 			} ),
 		} )
 			.then( ( response ) => {
