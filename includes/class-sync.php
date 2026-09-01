@@ -22,7 +22,8 @@ class Sync {
 	const SCHEMA_OPTION    = 'zotero_display_schema_version';
 	const STATE_PREFIX     = 'zotero_display_sync_';
 	const PAGE_SIZE        = 100;
-	const PAGES_PER_RUN    = 1;
+	const PAGES_PER_RUN    = 4;
+	const BATCH_TIME_LIMIT = 12;
 	const RETRY_DELAY      = 300;
 	const WRITE_BATCH_SIZE = 40;
 
@@ -154,6 +155,7 @@ class Sync {
 		$args['api_key']       = $settings['api_key'];
 		$last_modified_version = isset( $state['last_modified_version'] ) ? (int) $state['last_modified_version'] : 0;
 		$completed             = false;
+		$batch_started         = microtime( true );
 
 		for ( $page_number = 0; $page_number < self::PAGES_PER_RUN; ++$page_number ) {
 			$page = Zotero_API::fetch_page( $args, (int) $state['next_start'], self::PAGE_SIZE );
@@ -204,6 +206,10 @@ class Sync {
 
 			if ( 0 === (int) $page['raw_count'] || ( $state['total'] && $state['next_start'] >= $state['total'] ) || (int) $page['raw_count'] < self::PAGE_SIZE ) {
 				$completed = true;
+				break;
+			}
+
+			if ( ( microtime( true ) - $batch_started ) >= self::BATCH_TIME_LIMIT ) {
 				break;
 			}
 		}

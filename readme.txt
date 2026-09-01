@@ -3,7 +3,7 @@ Contributors: lwangdu
 Tags: zotero, bibliography, citations, gutenberg, publications
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -16,7 +16,7 @@ Nature Zotero Publications displays live Zotero library data in a dynamic Gutenb
 
 The block includes search, year/type/author filters, entry counts, and pagination. Initial results are rendered on the server and progressively enhanced with the WordPress Interactivity API. Author suggestions are requested only after a visitor types at least two characters, avoiding a large inline author list.
 
-The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the completed local index. During the first synchronization, a lightweight progress indicator replaces the publication controls until the complete index is ready.
+The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the local index. During the first synchronization, already-indexed publications and controls remain available alongside an accessible progress indicator.
 
 Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses.
 
@@ -79,6 +79,13 @@ Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This c
 Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
 
 == Changelog ==
+
+= 1.0.4 =
+
+* Process up to four Zotero pages in each time-bounded background run.
+* Poll synchronization progress every five seconds while the first index is being built.
+* Skip rendering off-screen publication cards until they approach the viewport.
+* Add compact numbered pagination with responsive wrapping.
 
 = 1.0.3 =
 

@@ -2,7 +2,7 @@
 
 Nature Zotero Publications is a dynamic WordPress block that displays a complete Zotero user or group library as a searchable, filterable bibliography.
 
-Current version: **1.0.3**
+Current version: **1.0.4**
 
 ## Requirements
 
@@ -38,6 +38,8 @@ Zotero limits an API response to 100 items. The plugin uses a resumable backgrou
 Visitors continue to see the last completed generation while a refresh is running. During the first synchronization, the page displays already-indexed publications together with an accessible progress indicator and automatically reloads when the complete index is ready. Search, filters, pagination, and author suggestions work with the available partial index. Visitor page and REST requests never download a synchronous 2,000-item fallback.
 
 Version 1.0.2 stores each Zotero page with short multi-row writes and processes one page per background run. This substantially reduces write-lock time on SQLite-backed WordPress Studio sites while remaining compatible with MySQL.
+
+Version 1.0.4 processes up to four Zotero pages per background run, stops a run after 12 seconds, and polls first-sync progress every five seconds. The bounded worker improves throughput without returning to long row-by-row database locks. Off-screen publication cards use browser rendering containment to reduce initial layout and paint work on larger result pages.
 
 The cache-duration setting controls when a completed source becomes eligible for another background refresh. Changing connection settings or selecting **Clear Zotero Cache** removes both transient data and the local index so the source can synchronize again.
 
@@ -154,6 +156,13 @@ Open **Settings → Nature Zotero Publications** and select **Clear Zotero Cache
 Compare against Zotero's top-level **items in this view** count. Child attachments and annotations are intentionally excluded, while standalone attachments are included.
 
 ## Changelog
+
+### 1.0.4
+
+- Processed up to four Zotero pages in each time-bounded background run.
+- Polled first-sync progress every five seconds.
+- Deferred rendering work for off-screen publication cards.
+- Added compact numbered pagination with responsive wrapping.
 
 ### 1.0.3
 

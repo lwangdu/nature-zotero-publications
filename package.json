@@ -1,6 +1,6 @@
 {
 	"name": "nature-zotero-publications",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Display live Zotero library data as a searchable, filterable Gutenberg bibliography.",
 	"private": true,
 	"scripts": {

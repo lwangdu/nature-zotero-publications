@@ -114,6 +114,59 @@ function* requestItems( context ) {
 	yield* fetchItems( context, requestId );
 }
 
+function paginationItems( context ) {
+	const current = context.page;
+	const total = context.totalPages;
+	const items = [];
+
+	const addPage = ( page ) => {
+		items.push( {
+			key: `page-${ page }`,
+			label: page.toLocaleString(),
+			page,
+			isCurrent: page === current,
+			isEllipsis: false,
+			isDisabled: context.isLoading,
+			ariaCurrent: page === current ? 'page' : false,
+			ariaLabel: `${ context.pageLabel } ${ page.toLocaleString() }`,
+		} );
+	};
+	const addEllipsis = ( key ) => {
+		items.push( {
+			key,
+			label: '…',
+			page: 0,
+			isCurrent: false,
+			isEllipsis: true,
+			isDisabled: true,
+			ariaCurrent: false,
+			ariaLabel: '',
+		} );
+	};
+
+	if ( total <= 5 ) {
+		for ( let page = 1; page <= total; page++ ) {
+			addPage( page );
+		}
+	} else if ( current <= 3 ) {
+		[ 1, 2, 3 ].forEach( addPage );
+		addEllipsis( 'ellipsis-end' );
+		addPage( total );
+	} else if ( current >= total - 2 ) {
+		addPage( 1 );
+		addEllipsis( 'ellipsis-start' );
+		[ total - 2, total - 1, total ].forEach( addPage );
+	} else {
+		addPage( 1 );
+		addEllipsis( 'ellipsis-start' );
+		[ current - 1, current, current + 1 ].forEach( addPage );
+		addEllipsis( 'ellipsis-end' );
+		addPage( total );
+	}
+
+	return items;
+}
+
 store( 'zotero-display', {
 	callbacks: {
 		*pollSync() {
@@ -126,7 +179,7 @@ store( 'zotero-display', {
 			} );
 
 			while ( true ) {
-				yield delay( 15000 );
+				yield delay( 5000 );
 
 				try {
 					const response = yield fetch(
@@ -157,6 +210,16 @@ store( 'zotero-display', {
 	state: {
 		get isPaginationHidden() {
 			return getContext().totalPages <= 1;
+		},
+		get paginationItems() {
+			return paginationItems( getContext() );
+		},
+		get isPreviousHidden() {
+			return getContext().page <= 1;
+		},
+		get isNextHidden() {
+			const context = getContext();
+			return context.page >= context.totalPages;
 		},
 		get isPreviousDisabled() {
 			const context = getContext();
@@ -293,6 +356,14 @@ store( 'zotero-display', {
 			const context = getContext();
 			if ( context.page < context.totalPages && ! context.isLoading ) {
 				++context.page;
+				yield* requestItems( context );
+			}
+		},
+		*goToPage() {
+			const context = getContext();
+			const page = context.pagination.page;
+			if ( page > 0 && page !== context.page && ! context.isLoading ) {
+				context.page = page;
 				yield* requestItems( context );
 			}
 		},

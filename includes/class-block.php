@@ -153,6 +153,7 @@ class Block {
 			'errorMessage'         => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
 			'undatedLabel'         => __( 'Undated', 'nature-zotero-publications' ),
 			'inLabel'              => __( 'In:', 'nature-zotero-publications' ),
+			'pageLabel'            => __( 'Page', 'nature-zotero-publications' ),
 			'requestId'            => 0,
 			'authorRequestId'      => 0,
 			'syncProcessed'        => (int) $public_state['processed'],
@@ -267,18 +268,26 @@ class Block {
 			</div>
 
 			<nav class="zotero-display-pagination" aria-label="<?php esc_attr_e( 'Publication pagination', 'nature-zotero-publications' ); ?>" data-wp-bind--hidden="state.isPaginationHidden">
-					<button type="button" class="zotero-page-prev" data-wp-on--click="actions.previousPage" data-wp-bind--disabled="state.isPreviousDisabled"><?php esc_html_e( 'Previous', 'nature-zotero-publications' ); ?></button>
 					<span class="zotero-page-status" data-zotero-page-status role="status" aria-live="polite" aria-atomic="true">
 						<?php
 						printf(
-							/* translators: 1: current page 2: total pages */
-							esc_html__( 'Page %1$s of %2$s', 'nature-zotero-publications' ),
+							/* translators: 1: current page, 2: total pages, 3: total entries. */
+							esc_html__( 'Page %1$s of %2$s (%3$s entries)', 'nature-zotero-publications' ),
 							'<span data-wp-text="context.page">1</span>',
-							'<span data-wp-text="context.totalPages">' . esc_html( $total_pages ) . '</span>'
+							'<span data-wp-text="context.totalPages">' . esc_html( $total_pages ) . '</span>',
+							'<span data-wp-text="context.totalItems">' . esc_html( $total ) . '</span>'
 						);
 						?>
 					</span>
-					<button type="button" class="zotero-page-next" data-wp-on--click="actions.nextPage" data-wp-bind--disabled="state.isNextDisabled"><?php esc_html_e( 'Next', 'nature-zotero-publications' ); ?></button>
+					<div class="zotero-page-links">
+						<button type="button" class="zotero-page-prev" data-wp-on--click="actions.previousPage" data-wp-bind--disabled="state.isPreviousDisabled" data-wp-bind--hidden="state.isPreviousHidden"><?php esc_html_e( 'Previous', 'nature-zotero-publications' ); ?></button>
+						<template data-wp-each--pagination="state.paginationItems" data-wp-each-key="context.pagination.key">
+							<span>
+								<button type="button" class="zotero-page-number" data-wp-bind--aria-current="context.pagination.ariaCurrent" data-wp-bind--aria-label="context.pagination.ariaLabel" data-wp-bind--aria-hidden="context.pagination.isEllipsis" data-wp-class--is-current="context.pagination.isCurrent" data-wp-class--is-ellipsis="context.pagination.isEllipsis" data-wp-on--click="actions.goToPage" data-wp-bind--disabled="context.pagination.isDisabled" data-wp-text="context.pagination.label"></button>
+							</span>
+						</template>
+						<button type="button" class="zotero-page-next" data-wp-on--click="actions.nextPage" data-wp-bind--disabled="state.isNextDisabled" data-wp-bind--hidden="state.isNextHidden"><?php esc_html_e( 'Next', 'nature-zotero-publications' ); ?></button>
+					</div>
 			</nav>
 
 			<div class="zotero-display-empty" role="status" aria-live="polite" aria-atomic="true" data-wp-bind--hidden="!context.isEmpty" data-wp-text="context.message"><?php esc_html_e( 'No items match your filters.', 'nature-zotero-publications' ); ?></div>
