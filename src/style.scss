@@ -256,6 +256,22 @@
 		color: var(--zotero-muted);
 	}
 
+	&.zotero-display-sync-status {
+		padding: 1rem 0;
+
+		.zotero-display-sync-message {
+			margin: 0 0 0.6rem;
+			color: var(--zotero-muted);
+		}
+
+		progress {
+			display: block;
+			width: min(100%, 25rem);
+			height: 0.75rem;
+			accent-color: var(--zotero-blue);
+		}
+	}
+
 	.zotero-display-error {
 		padding: 1rem;
 		border: 1px solid #b32d2e;

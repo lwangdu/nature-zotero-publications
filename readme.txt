@@ -3,7 +3,7 @@ Contributors: lwangdu
 Tags: zotero, bibliography, citations, gutenberg, publications
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 1.0.1
+Stable tag: 1.0.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -16,7 +16,7 @@ Nature Zotero Publications displays live Zotero library data in a dynamic Gutenb
 
 The block includes search, year/type/author filters, entry counts, and pagination. Initial results are rendered on the server and progressively enhanced with the WordPress Interactivity API. Author suggestions are requested only after a visitor types at least two characters, avoiding a large inline author list.
 
-The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the completed local index. A transient-backed fallback remains available while the first full sync runs.
+The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the completed local index. During the first synchronization, a lightweight progress indicator replaces the publication controls until the complete index is ready.
 
 Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses.
 
@@ -79,6 +79,18 @@ Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This c
 Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
 
 == Changelog ==
+
+= 1.0.3 =
+
+* Display already-synchronized publications during the first full-library synchronization.
+* Keep accessible progress and automatic reload while partial search, filters, pagination, and author suggestions are available.
+
+= 1.0.2 =
+
+* Remove the synchronous 2,000-item fallback from visitor page and REST requests.
+* Show accessible synchronization progress until the first complete local index is ready.
+* Reduce SQLite write contention with short bulk writes and one Zotero page per background run.
+* Automatically reload the bibliography when its first full synchronization completes.
 
 = 1.0.1 =
 

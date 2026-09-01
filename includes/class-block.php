@@ -102,7 +102,7 @@ class Block {
 
 		$per_page    = max( 1, (int) $attributes['itemsPerPage'] );
 		$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, true, false );
-		Sync::ensure_scheduled( $query_args );
+		$sync_state  = Sync::ensure_scheduled( $query_args );
 
 		if ( false !== $sync_result ) {
 			$first_page  = $sync_result['items'];
@@ -110,82 +110,91 @@ class Block {
 			$total_pages = $sync_result['pagination']['total_pages'];
 			$stats       = $sync_result['stats'];
 		} else {
-			$items = Zotero_API::get_items( $query_args );
-
-			if ( is_wp_error( $items ) ) {
-				if ( current_user_can( 'edit_posts' ) ) {
-					return '<p class="zotero-display-error">' . esc_html(
-						sprintf(
-						/* translators: %s: error message */
-							__( 'Nature Zotero Publications error: %s', 'nature-zotero-publications' ),
-							$items->get_error_message()
-						)
-					) . '</p>';
-				}
-				return '';
-			}
-
-			$total       = count( $items );
-			$first_page  = array_slice( $items, 0, $per_page );
-			$total_pages = (int) ceil( $total / $per_page );
-			$stats       = REST_Controller::compute_stats( $items, true, false );
+			return self::render_sync_status( $query_args, $sync_state );
 		}
 
+		$public_state = $sync_result['sync'];
+		$is_partial   = empty( $public_state['ready'] );
+		$sync_message = $is_partial
+			? sprintf(
+				/* translators: 1: processed publication count, 2: total publication count. */
+				__( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'nature-zotero-publications' ),
+				number_format_i18n( $public_state['processed'] ),
+				number_format_i18n( $public_state['total'] )
+			)
+			: '';
+
 		$context = array(
-			'restUrl'           => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
-			'libraryType'       => $query_args['library_type'],
-			'libraryId'         => $query_args['library_id'],
-			'collection'        => $attributes['collection'],
-			'sortBy'            => $attributes['sortBy'],
-			'sortDirection'     => $attributes['sortDirection'],
-			'perPage'           => $per_page,
-			'showAbstract'      => (bool) $attributes['showAbstract'],
-			'page'              => 1,
-			'totalPages'        => $total_pages,
-			'totalItems'        => $total,
-			'search'            => '',
-			'filterType'        => '',
-			'filterYear'        => '',
-			'filterAuthor'      => '',
-			'authorQuery'       => '',
-			'authorSuggestions' => array(),
-			'authorOpen'        => false,
-			'activeAuthorIndex' => -1,
-			'items'             => array(),
-			'hasFetched'        => false,
-			'isLoading'         => false,
-			'isEmpty'           => false,
-			'message'           => __( 'No items match your filters.', 'nature-zotero-publications' ),
-			'noResultsMessage'  => __( 'No items match your filters.', 'nature-zotero-publications' ),
-			'errorMessage'      => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
-			'undatedLabel'      => __( 'Undated', 'nature-zotero-publications' ),
-			'inLabel'           => __( 'In:', 'nature-zotero-publications' ),
-			'requestId'         => 0,
-			'authorRequestId'   => 0,
+			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'libraryType'          => $query_args['library_type'],
+			'libraryId'            => $query_args['library_id'],
+			'collection'           => $attributes['collection'],
+			'sortBy'               => $attributes['sortBy'],
+			'sortDirection'        => $attributes['sortDirection'],
+			'perPage'              => $per_page,
+			'showAbstract'         => (bool) $attributes['showAbstract'],
+			'page'                 => 1,
+			'totalPages'           => $total_pages,
+			'totalItems'           => $total,
+			'search'               => '',
+			'filterType'           => '',
+			'filterYear'           => '',
+			'filterAuthor'         => '',
+			'authorQuery'          => '',
+			'authorSuggestions'    => array(),
+			'authorOpen'           => false,
+			'activeAuthorIndex'    => -1,
+			'items'                => array(),
+			'hasFetched'           => false,
+			'isLoading'            => false,
+			'isEmpty'              => false,
+			'message'              => __( 'No items match your filters.', 'nature-zotero-publications' ),
+			'noResultsMessage'     => __( 'No items match your filters.', 'nature-zotero-publications' ),
+			'errorMessage'         => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
+			'undatedLabel'         => __( 'Undated', 'nature-zotero-publications' ),
+			'inLabel'              => __( 'In:', 'nature-zotero-publications' ),
+			'requestId'            => 0,
+			'authorRequestId'      => 0,
+			'syncProcessed'        => (int) $public_state['processed'],
+			'syncTotal'            => (int) $public_state['total'],
+			'syncProgressMax'      => max( 1, (int) $public_state['total'] ),
+			'syncMessage'          => $sync_message,
+			/* translators: 1: processed publication count, 2: total publication count. */
+			'syncProgressTemplate' => __( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'nature-zotero-publications' ),
+			'syncPreparingMessage' => __( 'Preparing publication synchronization…', 'nature-zotero-publications' ),
+			'syncErrorMessage'     => __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' ),
 		);
 
-		$wrapper_attrs     = get_block_wrapper_attributes(
-			array(
-				'class'               => 'zotero-display-block',
-				'data-zotero-display' => 'true',
-				'data-library-type'   => $query_args['library_type'],
-				'data-library-id'     => esc_attr( $query_args['library_id'] ),
-				'data-collection'     => esc_attr( $attributes['collection'] ),
-				'data-sort-by'        => esc_attr( $attributes['sortBy'] ),
-				'data-sort-direction' => esc_attr( $attributes['sortDirection'] ),
-				'data-items-per-page' => esc_attr( $per_page ),
-				'data-show-stats'     => $attributes['showStats'] ? '1' : '0',
-				'data-show-filters'   => $attributes['showFilters'] ? '1' : '0',
-				'data-show-search'    => $attributes['showSearch'] ? '1' : '0',
-				'data-show-abstract'  => $attributes['showAbstract'] ? '1' : '0',
-			)
+		$wrapper_args = array(
+			'class'               => 'zotero-display-block' . ( $is_partial ? ' zotero-display-sync-status' : '' ),
+			'data-zotero-display' => 'true',
+			'data-library-type'   => $query_args['library_type'],
+			'data-library-id'     => esc_attr( $query_args['library_id'] ),
+			'data-collection'     => esc_attr( $attributes['collection'] ),
+			'data-sort-by'        => esc_attr( $attributes['sortBy'] ),
+			'data-sort-direction' => esc_attr( $attributes['sortDirection'] ),
+			'data-items-per-page' => esc_attr( $per_page ),
+			'data-show-stats'     => $attributes['showStats'] ? '1' : '0',
+			'data-show-filters'   => $attributes['showFilters'] ? '1' : '0',
+			'data-show-search'    => $attributes['showSearch'] ? '1' : '0',
+			'data-show-abstract'  => $attributes['showAbstract'] ? '1' : '0',
 		);
+		if ( $is_partial ) {
+			$wrapper_args['data-wp-init'] = 'callbacks.pollSync';
+		}
+		$wrapper_attrs     = get_block_wrapper_attributes( $wrapper_args );
 		$author_input_id   = wp_unique_id( 'zotero-author-' );
 		$author_results_id = wp_unique_id( 'zotero-author-results-' );
 
 		ob_start();
 		?>
 		<div <?php echo $wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> data-wp-interactive="zotero-display" <?php echo wp_interactivity_data_wp_context( $context ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core generates an escaped directive attribute. ?>>
+			<?php if ( $is_partial ) : ?>
+				<p class="zotero-display-sync-message" role="status" aria-live="polite" aria-atomic="true" data-wp-text="context.syncMessage"><?php echo esc_html( $sync_message ); ?></p>
+				<progress value="<?php echo esc_attr( $public_state['processed'] ); ?>" max="<?php echo esc_attr( max( 1, (int) $public_state['total'] ) ); ?>" data-wp-bind--value="context.syncProcessed" data-wp-bind--max="context.syncProgressMax">
+					<?php echo esc_html( $sync_message ); ?>
+				</progress>
+			<?php endif; ?>
 
 			<?php if ( $attributes['showStats'] ) : ?>
 				<div class="zotero-display-stats" data-zotero-stats role="status" aria-live="polite" aria-atomic="true">
@@ -273,6 +282,80 @@ class Block {
 			</nav>
 
 			<div class="zotero-display-empty" role="status" aria-live="polite" aria-atomic="true" data-wp-bind--hidden="!context.isEmpty" data-wp-text="context.message"><?php esc_html_e( 'No items match your filters.', 'nature-zotero-publications' ); ?></div>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Render a lightweight status while the first complete index is built.
+	 *
+	 * @param array $query_args Zotero source query arguments.
+	 * @param array $sync_state Internal synchronization state.
+	 * @return string
+	 */
+	private static function render_sync_status( array $query_args, array $sync_state ) {
+		$public_state = Sync::get_public_state( $query_args );
+		$processed    = (int) $public_state['processed'];
+		$total        = (int) $public_state['total'];
+		$is_error     = 'error' === $public_state['status'];
+
+		if ( $is_error ) {
+			$message = __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' );
+			if ( current_user_can( 'edit_posts' ) && ! empty( $sync_state['error'] ) ) {
+				$message = sprintf(
+					/* translators: %s: synchronization error message. */
+					__( 'Nature Zotero Publications synchronization error: %s', 'nature-zotero-publications' ),
+					$sync_state['error']
+				);
+			}
+		} elseif ( $total > 0 ) {
+			$message = sprintf(
+				/* translators: 1: processed publication count, 2: total publication count. */
+				__( 'Synchronizing publications: %1$s of %2$s processed.', 'nature-zotero-publications' ),
+				number_format_i18n( $processed ),
+				number_format_i18n( $total )
+			);
+		} else {
+			$message = __( 'Preparing publication synchronization…', 'nature-zotero-publications' );
+		}
+
+		$context       = array(
+			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'libraryType'          => $query_args['library_type'],
+			'libraryId'            => $query_args['library_id'],
+			'collection'           => $query_args['collection'],
+			'sortBy'               => $query_args['sort'],
+			'sortDirection'        => $query_args['direction'],
+			'syncProcessed'        => $processed,
+			'syncTotal'            => $total,
+			'syncProgressMax'      => max( 1, $total ),
+			'syncMessage'          => $message,
+			/* translators: 1: processed publication count, 2: total publication count. */
+			'syncProgressTemplate' => __( 'Synchronizing publications: %1$s of %2$s processed.', 'nature-zotero-publications' ),
+			'syncPreparingMessage' => __( 'Preparing publication synchronization…', 'nature-zotero-publications' ),
+			'syncErrorMessage'     => __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' ),
+		);
+		$wrapper_attrs = get_block_wrapper_attributes(
+			array(
+				'class'               => 'zotero-display-block zotero-display-sync-status',
+				'data-zotero-display' => 'true',
+			)
+		);
+
+		ob_start();
+		?>
+		<div <?php echo $wrapper_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> data-wp-interactive="zotero-display" <?php echo wp_interactivity_data_wp_context( $context ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core generates an escaped directive attribute. ?>
+		<?php
+		if ( ! $is_error ) :
+			?>
+			data-wp-init="callbacks.pollSync"<?php endif; ?>>
+			<p class="zotero-display-sync-message" role="status" aria-live="polite" aria-atomic="true" data-wp-text="context.syncMessage"><?php echo esc_html( $message ); ?></p>
+			<?php if ( ! $is_error ) : ?>
+				<progress value="<?php echo esc_attr( $processed ); ?>" max="<?php echo esc_attr( max( 1, $total ) ); ?>" data-wp-bind--value="context.syncProcessed" data-wp-bind--max="context.syncProgressMax">
+					<?php echo esc_html( $message ); ?>
+				</progress>
+			<?php endif; ?>
 		</div>
 		<?php
 		return ob_get_clean();

@@ -45,6 +45,23 @@ function prepareItems( items, context ) {
 	} );
 }
 
+function updateSyncMessage( context, sync ) {
+	context.syncProcessed = sync.processed || 0;
+	context.syncTotal = sync.total || 0;
+	context.syncProgressMax = Math.max( 1, context.syncTotal );
+
+	if ( sync.status === 'error' ) {
+		context.syncMessage = context.syncErrorMessage;
+		return;
+	}
+
+	context.syncMessage = context.syncTotal
+		? context.syncProgressTemplate
+				.replace( '%1$s', context.syncProcessed.toLocaleString() )
+				.replace( '%2$s', context.syncTotal.toLocaleString() )
+		: context.syncPreparingMessage;
+}
+
 function* fetchItems( context, requestId ) {
 	context.isLoading = true;
 
@@ -98,6 +115,45 @@ function* requestItems( context ) {
 }
 
 store( 'zotero-display', {
+	callbacks: {
+		*pollSync() {
+			const context = getContext();
+			const params = new URLSearchParams( {
+				...sourceParams( context ),
+				per_page: '1',
+				page: '1',
+				include_facets: '0',
+			} );
+
+			while ( true ) {
+				yield delay( 15000 );
+
+				try {
+					const response = yield fetch(
+						`${ context.restUrl }items?${ params.toString() }`
+					);
+					if ( ! response.ok ) {
+						continue;
+					}
+
+					const data = yield response.json();
+					if ( data.sync?.ready ) {
+						window.location.reload();
+						return;
+					}
+
+					if ( data.sync ) {
+						updateSyncMessage( context, data.sync );
+						if ( data.sync.status === 'error' ) {
+							return;
+						}
+					}
+				} catch {
+					// Keep the current progress visible and retry after the interval.
+				}
+			}
+		},
+	},
 	state: {
 		get isPaginationHidden() {
 			return getContext().totalPages <= 1;

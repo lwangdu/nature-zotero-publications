@@ -17,13 +17,14 @@ defined( 'ABSPATH' ) || exit;
  */
 class Sync {
 
-	const HOOK           = 'zotero_display_sync_batch';
-	const SCHEMA_VERSION = 1;
-	const SCHEMA_OPTION  = 'zotero_display_schema_version';
-	const STATE_PREFIX   = 'zotero_display_sync_';
-	const PAGE_SIZE      = 100;
-	const PAGES_PER_RUN  = 4;
-	const RETRY_DELAY    = 300;
+	const HOOK             = 'zotero_display_sync_batch';
+	const SCHEMA_VERSION   = 1;
+	const SCHEMA_OPTION    = 'zotero_display_schema_version';
+	const STATE_PREFIX     = 'zotero_display_sync_';
+	const PAGE_SIZE        = 100;
+	const PAGES_PER_RUN    = 1;
+	const RETRY_DELAY      = 300;
+	const WRITE_BATCH_SIZE = 40;
 
 	/**
 	 * Register synchronization hooks and ensure the schema exists.
@@ -183,7 +184,15 @@ class Sync {
 				return;
 			}
 
-			self::store_page( $source_key, $state['sync_token'], (int) $state['next_start'], $page['items'] );
+			$stored = self::store_page( $source_key, $state['sync_token'], (int) $state['next_start'], $page['items'] );
+			if ( is_wp_error( $stored ) ) {
+				$state['status']     = 'error';
+				$state['error']      = $stored->get_error_message();
+				$state['updated_at'] = time();
+				self::set_state( $source_key, $state );
+				delete_transient( $lock_key );
+				return;
+			}
 
 			$state['total']                 = (int) $page['total'];
 			$state['processed']            += (int) $page['raw_count'];
@@ -217,21 +226,22 @@ class Sync {
 	 * @param int   $per_page       Items per result page.
 	 * @param bool  $include_facets  Whether to aggregate filter facets.
 	 * @param bool  $include_authors Whether to include the potentially large author facet.
-	 * @return array|false Results, or false before the initial sync completes.
+	 * @return array|false Results, or false before the first indexed page is available.
 	 */
 	public static function get_results( array $args, array $filters, $page, $per_page, $include_facets = true, $include_authors = false ) {
 		global $wpdb;
 
 		$source_key = self::source_key( self::normalize_source_args( $args ) );
 		$state      = self::get_state( $source_key );
-		if ( empty( $state['ready'] ) ) {
+		$sync_token = ! empty( $state['ready'] ) ? $state['active_token'] : ( isset( $state['sync_token'] ) ? $state['sync_token'] : '' );
+		if ( empty( $sync_token ) || ( empty( $state['ready'] ) && empty( $state['processed'] ) ) ) {
 			return false;
 		}
 
 		$page           = max( 1, (int) $page );
 		$per_page       = min( 100, max( 1, (int) $per_page ) );
 		$offset         = ( $page - 1 ) * $per_page;
-		$where          = self::build_where( $source_key, $state['active_token'], $filters );
+		$where          = self::build_where( $source_key, $sync_token, $filters );
 		$items_table    = self::items_table();
 		$prepared_where = self::prepare_sql( $where['sql'], $where['params'] );
 		$total_sql      = "SELECT COUNT(*) FROM {$items_table} i WHERE {$prepared_where}";
@@ -277,7 +287,7 @@ class Sync {
 	 * @param array  $args   Zotero source query arguments.
 	 * @param string $search Author search text.
 	 * @param int    $limit  Maximum suggestions to return.
-	 * @return array|false Author facets, or false before the initial sync completes.
+	 * @return array|false Author facets, or false before an indexed page is available.
 	 */
 	public static function get_authors( array $args, $search, $limit = 30 ) {
 		global $wpdb;
@@ -285,8 +295,9 @@ class Sync {
 		$source_key = self::source_key( self::normalize_source_args( $args ) );
 		$state      = self::get_state( $source_key );
 		$search     = sanitize_text_field( $search );
+		$sync_token = ! empty( $state['ready'] ) ? $state['active_token'] : ( isset( $state['sync_token'] ) ? $state['sync_token'] : '' );
 
-		if ( empty( $state['ready'] ) || 2 > mb_strlen( $search ) ) {
+		if ( empty( $sync_token ) || 2 > mb_strlen( $search ) ) {
 			return false;
 		}
 
@@ -305,13 +316,25 @@ class Sync {
 			$creators_table,
 			$items_table,
 			$source_key,
-			$state['active_token'],
+			$sync_token,
 			$like,
 			$limit
 		);
 		$rows           = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin-owned index query with identifiers and values prepared above.
 
 		return self::normalize_facets( $rows );
+	}
+
+	/**
+	 * Return non-sensitive synchronization details for a source.
+	 *
+	 * @param array $args Zotero source query arguments.
+	 * @return array Public synchronization state.
+	 */
+	public static function get_public_state( array $args ) {
+		$source_key = self::source_key( self::normalize_source_args( $args ) );
+
+		return self::public_state( self::get_state( $source_key ) );
 	}
 
 	/**
@@ -378,13 +401,13 @@ class Sync {
 	 * @param string $sync_token Current generation token.
 	 * @param int    $start      Zotero page offset.
 	 * @param array  $items      Normalized items.
-	 * @return void
+	 * @return true|\WP_Error True on success, or an error when a write fails.
 	 */
 	private static function store_page( $source_key, $sync_token, $start, array $items ) {
-		global $wpdb;
+		$now          = current_time( 'mysql', true );
+		$item_rows    = array();
+		$creator_rows = array();
 
-		$now = current_time( 'mysql', true );
-		$wpdb->query( 'START TRANSACTION' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Batch writes to the plugin-owned local index are substantially faster in one transaction.
 		foreach ( $items as $index => $item ) {
 			if ( empty( $item['key'] ) ) {
 				continue;
@@ -405,47 +428,87 @@ class Sync {
 				)
 			);
 
-			$wpdb->replace( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Data is stored in a dedicated plugin index.
-				self::items_table(),
-				array(
-					'source_key'      => $source_key,
-					'item_key'        => $storage_key,
-					'sort_index'      => $start + $index,
-					'item_type'       => $item['item_type'],
-					'item_type_label' => $item['item_type_label'],
-					'date_year'       => $item['date_year'],
-					'search_text'     => $search_text,
-					'data_json'       => wp_json_encode( $item ),
-					'sync_token'      => $sync_token,
-					'updated_at'      => $now,
-				),
-				array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
-			);
-
-			$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Creator rows mirror the plugin-owned item index.
-				self::creators_table(),
-				array(
-					'source_key' => $source_key,
-					'item_key'   => $storage_key,
-				),
-				array( '%s', '%s' )
+			$item_rows[] = array(
+				$source_key,
+				$storage_key,
+				$start + $index,
+				$item['item_type'],
+				$item['item_type_label'],
+				$item['date_year'],
+				$search_text,
+				wp_json_encode( $item ),
+				$sync_token,
+				$now,
 			);
 
 			foreach ( array_unique( $item['creators'] ) as $creator ) {
-				$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Data is stored in a dedicated plugin index.
-					self::creators_table(),
-					array(
-						'source_key'   => $source_key,
-						'item_key'     => $storage_key,
-						'creator_name' => $creator,
-						'creator_hash' => md5( $creator ),
-						'sync_token'   => $sync_token,
-					),
-					array( '%s', '%s', '%s', '%s', '%s' )
+				$creator_rows[] = array(
+					$source_key,
+					$storage_key,
+					$creator,
+					md5( $creator ),
+					$sync_token,
 				);
 			}
 		}
-		$wpdb->query( 'COMMIT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Completes the plugin-owned local-index batch transaction.
+
+		$items_stored = self::replace_rows(
+			self::items_table(),
+			array( 'source_key', 'item_key', 'sort_index', 'item_type', 'item_type_label', 'date_year', 'search_text', 'data_json', 'sync_token', 'updated_at' ),
+			array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ),
+			$item_rows
+		);
+		if ( is_wp_error( $items_stored ) ) {
+			return $items_stored;
+		}
+
+		return self::replace_rows(
+			self::creators_table(),
+			array( 'source_key', 'item_key', 'creator_name', 'creator_hash', 'sync_token' ),
+			array( '%s', '%s', '%s', '%s', '%s' ),
+			$creator_rows
+		);
+	}
+
+	/**
+	 * Store rows using short multi-row statements supported by MySQL and SQLite.
+	 *
+	 * @param string $table   Plugin-owned table name.
+	 * @param array  $columns Fixed column names.
+	 * @param array  $formats WordPress prepare formats for one row.
+	 * @param array  $rows    Row values.
+	 * @return true|\WP_Error True on success, or an error when a write fails.
+	 */
+	private static function replace_rows( $table, array $columns, array $formats, array $rows ) {
+		global $wpdb;
+
+		if ( empty( $rows ) ) {
+			return true;
+		}
+
+		$column_sql      = implode( ', ', $columns );
+		$row_placeholder = '(' . implode( ', ', $formats ) . ')';
+
+		foreach ( array_chunk( $rows, self::WRITE_BATCH_SIZE ) as $chunk ) {
+			$placeholders = array_fill( 0, count( $chunk ), $row_placeholder );
+			$values       = array( $table );
+
+			foreach ( $chunk as $row ) {
+				$values = array_merge( $values, $row );
+			}
+
+			$sql    = 'REPLACE INTO %i (' . $column_sql . ') VALUES ' . implode( ', ', $placeholders );
+			$result = $wpdb->query( $wpdb->prepare( $sql, $values ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Fixed columns and plugin-owned table; every row value is prepared.
+
+			if ( false === $result ) {
+				return new \WP_Error(
+					'zotero_display_index_write_failed',
+					__( 'Unable to update the local Zotero publication index.', 'nature-zotero-publications' )
+				);
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -680,6 +743,7 @@ class Sync {
 	private static function public_state( array $state ) {
 		return array(
 			'status'     => $state['status'],
+			'ready'      => ! empty( $state['ready'] ),
 			'processed'  => (int) $state['processed'],
 			'total'      => (int) $state['total'],
 			'last_sync'  => (int) $state['last_sync'],

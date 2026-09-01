@@ -184,92 +184,20 @@ class REST_Controller {
 			return rest_ensure_response( $sync_result );
 		}
 
-		$items = Zotero_API::get_items( $query_args );
-
-		if ( is_wp_error( $items ) ) {
-			return $items;
-		}
-
-		// --- In-request filtering (search, type, year, author) ---
-		if ( $search ) {
-			$needle = mb_strtolower( $search );
-			$items  = array_values(
-				array_filter(
-					$items,
-					function ( $item ) use ( $needle ) {
-						$haystack = mb_strtolower(
-							implode(
-								' ',
-								array(
-									$item['title'],
-									$item['creator_str'],
-									$item['date'],
-									$item['doi'],
-									$item['citation_key'],
-									$item['abstract'],
-									$item['publication'],
-									implode( ' ', $item['tags'] ),
-								)
-							)
-						);
-						return false !== mb_strpos( $haystack, $needle );
-					}
-				)
-			);
-		}
-
-		if ( $filter_type ) {
-			$items = array_values(
-				array_filter(
-					$items,
-					function ( $item ) use ( $filter_type ) {
-						return $item['item_type'] === $filter_type;
-					}
-				)
-			);
-		}
-
-		if ( $filter_year ) {
-			$items = array_values(
-				array_filter(
-					$items,
-					function ( $item ) use ( $filter_year ) {
-						return $item['date_year'] === $filter_year;
-					}
-				)
-			);
-		}
-
-		if ( $filter_author ) {
-			$items = array_values(
-				array_filter(
-					$items,
-					function ( $item ) use ( $filter_author ) {
-						return in_array( $filter_author, $item['creators'], true );
-					}
-				)
-			);
-		}
-
-		// --- Stats (computed on the filtered set, before pagination) ---
-		$stats = self::compute_stats( $items, $include_facets, $include_authors );
-
-		// --- Pagination ---
-		$offset = ( $page - 1 ) * $per_page;
-		$total  = count( $items );
-		$paged  = array_slice( $items, $offset, $per_page );
-
-		return rest_ensure_response(
+		Sync::ensure_scheduled( $query_args );
+		return new \WP_REST_Response(
 			array(
-				'items'      => $paged,
-				'stats'      => $stats,
+				'items'      => array(),
+				'sync'       => Sync::get_public_state( $query_args ),
+				'stats'      => array( 'total_items' => 0 ),
 				'pagination' => array(
-					'page'        => $page,
+					'page'        => 1,
 					'per_page'    => $per_page,
-					'total_items' => $total,
-					'total_pages' => (int) ceil( $total / $per_page ),
+					'total_items' => 0,
+					'total_pages' => 0,
 				),
-			)
+			),
+			202
 		);
 	}
 
