@@ -64,6 +64,7 @@ register_activation_hook( __FILE__, 'zotero_display_activate' );
  * Deactivation: clear any of our transients so stale data doesn't linger.
  */
 function zotero_display_deactivate() {
+	Zotero_Display\Block::clear_fragment_cache();
 	Zotero_Display\Zotero_API::clear_all_caches();
 	Zotero_Display\Sync::unschedule();
 }

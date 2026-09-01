@@ -351,6 +351,7 @@ class Sync {
 	public static function clear_all() {
 		global $wpdb;
 
+		Block::clear_fragment_cache();
 		wp_clear_scheduled_hook( self::HOOK );
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', self::items_table() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Fixed plugin-owned table identifier is prepared.
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', self::creators_table() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Fixed plugin-owned table identifier is prepared.
@@ -538,6 +539,7 @@ class Sync {
 
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE source_key = %s AND sync_token <> %s', self::items_table(), $source_key, $state['active_token'] ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Plugin table identifier and values are prepared.
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE source_key = %s AND sync_token <> %s', self::creators_table(), $source_key, $state['active_token'] ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Plugin table identifier and values are prepared.
+		Block::clear_fragment_cache();
 	}
 
 	/**

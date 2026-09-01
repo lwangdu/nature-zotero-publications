@@ -14,6 +14,18 @@ defined( 'ABSPATH' ) || exit;
  */
 class Block {
 
+	/** Fragment-cache transient prefix. */
+	const FRAGMENT_CACHE_PREFIX = 'zotero_display_fragment_';
+
+	/** Option containing fragment-cache transient keys for explicit invalidation. */
+	const FRAGMENT_CACHE_KEYS_OPTION = 'zotero_display_fragment_cache_keys';
+
+	/** Placeholder replaced with a unique author input ID on every render. */
+	const AUTHOR_INPUT_PLACEHOLDER = 'zotero-author-input-placeholder';
+
+	/** Placeholder replaced with a unique author results ID on every render. */
+	const AUTHOR_RESULTS_PLACEHOLDER = 'zotero-author-results-placeholder';
+
 	/**
 	 * Singleton instance.
 	 *
@@ -52,6 +64,25 @@ class Block {
 				'render_callback' => array( $this, 'render' ),
 			)
 		);
+	}
+
+	/**
+	 * Delete every cached block fragment.
+	 *
+	 * @return void
+	 */
+	public static function clear_fragment_cache() {
+		$cache_keys = get_option( self::FRAGMENT_CACHE_KEYS_OPTION, array() );
+
+		if ( is_array( $cache_keys ) ) {
+			foreach ( array_unique( $cache_keys ) as $cache_key ) {
+				if ( is_string( $cache_key ) && 0 === strpos( $cache_key, self::FRAGMENT_CACHE_PREFIX ) ) {
+					delete_transient( $cache_key );
+				}
+			}
+		}
+
+		delete_option( self::FRAGMENT_CACHE_KEYS_OPTION );
 	}
 
 	/**
@@ -100,9 +131,16 @@ class Block {
 			return '';
 		}
 
-		$per_page    = max( 1, (int) $attributes['itemsPerPage'] );
-		$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, true, false );
-		$sync_state  = Sync::ensure_scheduled( $query_args );
+		$per_page           = max( 1, (int) $attributes['itemsPerPage'] );
+		$fragment_cache_key = self::fragment_cache_key( $query_args, $attributes, 1 );
+		$cached_fragment    = get_transient( $fragment_cache_key );
+		if ( false !== $cached_fragment && is_string( $cached_fragment ) ) {
+			return self::personalize_fragment( $cached_fragment );
+		}
+
+		$include_facets = $attributes['showStats'] || $attributes['showFilters'];
+		$sync_result    = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
+		$sync_state     = Sync::ensure_scheduled( $query_args );
 
 		if ( false !== $sync_result ) {
 			$first_page  = $sync_result['items'];
@@ -184,8 +222,8 @@ class Block {
 			$wrapper_args['data-wp-init'] = 'callbacks.pollSync';
 		}
 		$wrapper_attrs     = get_block_wrapper_attributes( $wrapper_args );
-		$author_input_id   = wp_unique_id( 'zotero-author-' );
-		$author_results_id = wp_unique_id( 'zotero-author-results-' );
+		$author_input_id   = self::AUTHOR_INPUT_PLACEHOLDER;
+		$author_results_id = self::AUTHOR_RESULTS_PLACEHOLDER;
 
 		ob_start();
 		?>
@@ -293,7 +331,80 @@ class Block {
 			<div class="zotero-display-empty" role="status" aria-live="polite" aria-atomic="true" data-wp-bind--hidden="!context.isEmpty" data-wp-text="context.message"><?php esc_html_e( 'No items match your filters.', 'nature-zotero-publications' ); ?></div>
 		</div>
 		<?php
-		return ob_get_clean();
+		$fragment = ob_get_clean();
+
+		if ( 'complete' === $public_state['status'] ) {
+			set_transient( $fragment_cache_key, $fragment, self::fragment_cache_ttl( $query_args ) );
+			self::remember_fragment_cache_key( $fragment_cache_key );
+		}
+
+		return self::personalize_fragment( $fragment );
+	}
+
+	/**
+	 * Build a stable transient key for one server-rendered result page.
+	 *
+	 * @param array $query_args Zotero source query arguments.
+	 * @param array $attributes Block attributes.
+	 * @param int   $page       One-based result page.
+	 * @return string
+	 */
+	private static function fragment_cache_key( array $query_args, array $attributes, $page ) {
+		unset( $query_args['api_key'] );
+
+		return self::FRAGMENT_CACHE_PREFIX . md5(
+			wp_json_encode(
+				array(
+					'version'    => ZOTERO_DISPLAY_VERSION,
+					'query_args' => $query_args,
+					'page'       => max( 1, (int) $page ),
+					'attributes' => $attributes,
+					'locale'     => determine_locale(),
+				)
+			)
+		);
+	}
+
+	/**
+	 * Keep the fragment alive no longer than the configured refresh interval.
+	 *
+	 * @param array $query_args Zotero source query arguments.
+	 * @return int
+	 */
+	private static function fragment_cache_ttl( array $query_args ) {
+		$cache_minutes = isset( $query_args['cache_minutes'] ) ? (int) $query_args['cache_minutes'] : 60;
+
+		return max( MINUTE_IN_SECONDS, $cache_minutes * MINUTE_IN_SECONDS );
+	}
+
+	/**
+	 * Track a transient key so sync completion can purge object-cache entries too.
+	 *
+	 * @param string $cache_key Transient key.
+	 * @return void
+	 */
+	private static function remember_fragment_cache_key( $cache_key ) {
+		$cache_keys = get_option( self::FRAGMENT_CACHE_KEYS_OPTION, array() );
+		$cache_keys = is_array( $cache_keys ) ? $cache_keys : array();
+
+		if ( ! in_array( $cache_key, $cache_keys, true ) ) {
+			$cache_keys[] = $cache_key;
+			update_option( self::FRAGMENT_CACHE_KEYS_OPTION, $cache_keys, false );
+		}
+	}
+
+	/**
+	 * Replace cached ID placeholders so repeated identical blocks remain valid.
+	 *
+	 * @param string $fragment Cached block HTML.
+	 * @return string
+	 */
+	private static function personalize_fragment( $fragment ) {
+		return str_replace(
+			array( self::AUTHOR_INPUT_PLACEHOLDER, self::AUTHOR_RESULTS_PLACEHOLDER ),
+			array( wp_unique_id( 'zotero-author-' ), wp_unique_id( 'zotero-author-results-' ) ),
+			$fragment
+		);
 	}
 
 	/**
