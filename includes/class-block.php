@@ -17,6 +17,9 @@ class Block {
 	/** Fragment-cache transient prefix. */
 	const FRAGMENT_CACHE_PREFIX = 'zotero_display_fragment_';
 
+	/** Increment when cached block markup changes. */
+	const FRAGMENT_CACHE_VERSION = 2;
+
 	/** Option containing fragment-cache transient keys for explicit invalidation. */
 	const FRAGMENT_CACHE_KEYS_OPTION = 'zotero_display_fragment_cache_keys';
 
@@ -102,7 +105,7 @@ class Block {
 			'collection'    => '',
 			'sortBy'        => 'date',
 			'sortDirection' => 'desc',
-			'itemsPerPage'  => 10,
+			'itemsPerPage'  => 100,
 			'columns'       => 3,
 			'showStats'     => true,
 			'showFilters'   => true,
@@ -299,7 +302,6 @@ class Block {
 								<a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.zotero_link"><?php esc_html_e( 'Zotero', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
 								<span data-wp-bind--hidden="!context.item.citation_key"><?php esc_html_e( 'Citation key:', 'nature-zotero-publications' ); ?> <code data-wp-text="context.item.citation_key"></code></span>
 							</div>
-							<p class="zotero-publication-tags" data-wp-bind--hidden="!context.item.tagsText"><span><?php esc_html_e( 'Tags:', 'nature-zotero-publications' ); ?></span> <span data-wp-text="context.item.tagsText"></span></p>
 						</article>
 					</div>
 				</template>
@@ -355,7 +357,7 @@ class Block {
 		return self::FRAGMENT_CACHE_PREFIX . md5(
 			wp_json_encode(
 				array(
-					'version'    => ZOTERO_DISPLAY_VERSION,
+					'version'    => ZOTERO_DISPLAY_VERSION . ':' . self::FRAGMENT_CACHE_VERSION,
 					'query_args' => $query_args,
 					'page'       => max( 1, (int) $page ),
 					'attributes' => $attributes,
@@ -526,9 +528,6 @@ class Block {
 					?>
 					<span><?php esc_html_e( 'Citation key:', 'nature-zotero-publications' ); ?> <code><?php echo esc_html( $item['citation_key'] ); ?></code></span><?php endif; ?>
 			</div>
-			<?php if ( $item['tags'] ) : ?>
-				<p class="zotero-publication-tags"><span><?php esc_html_e( 'Tags:', 'nature-zotero-publications' ); ?></span> <?php echo esc_html( implode( ', ', $item['tags'] ) ); ?></p>
-			<?php endif; ?>
 		</article>
 		<?php
 		return ob_get_clean();

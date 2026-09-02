@@ -40,7 +40,6 @@ function prepareItems( items, context ) {
 			citationText: citationParts.length
 				? `${ citationParts.join( ', ' ) }.`
 				: '',
-			tagsText: Array.isArray( item.tags ) ? item.tags.join( ', ' ) : '',
 		};
 	} );
 }

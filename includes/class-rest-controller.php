@@ -165,7 +165,7 @@ class REST_Controller {
 		$requested_page     = $request->get_param( 'page' );
 		$requested_per_page = $request->get_param( 'per_page' );
 		$page               = max( 1, $requested_page ? (int) $requested_page : 1 );
-		$per_page           = max( 1, $requested_per_page ? (int) $requested_per_page : 10 );
+		$per_page           = max( 1, $requested_per_page ? (int) $requested_per_page : 100 );
 		$sync_result        = Sync::get_results(
 			$query_args,
 			array(

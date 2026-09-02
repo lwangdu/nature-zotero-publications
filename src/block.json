@@ -31,7 +31,7 @@
 		},
 		"itemsPerPage": {
 			"type": "number",
-			"default": 10
+			"default": 100
 		},
 		"columns": {
 			"type": "number",

@@ -20,7 +20,7 @@ Current version: **1.0.4**
 - WordPress Interactivity API search, filters, counts, and pagination
 - Year and item-type filters
 - Accessible, on-demand author autocomplete
-- Linked titles, authors, publication details, item-type badges, dates, DOI, source and Zotero links, citation keys, tags, and expandable abstracts
+- Linked titles, authors, publication details, item-type badges, dates, DOI, source and Zotero links, citation keys, and expandable abstracts
 - Configurable sorting, items per page, statistics, filters, search, and abstracts
 - Local querying after synchronization, without requesting Zotero again for every visitor interaction
 - Server-only handling of private Zotero API keys
@@ -95,7 +95,7 @@ The plugin displays Zotero's native `citationKey` value when present. For older 
 
 Child attachments and annotations are excluded. Top-level standalone attachments remain visible so the total aligns more closely with Zotero's **items in this view** count. Untitled top-level records receive an **Untitled** display label.
 
-General search covers titles, authors, dates, DOI values, citation keys, abstracts, publications, and tags. Publication titles link to their best available external URL and fall back to the Zotero item page.
+General search covers titles, authors, dates, DOI values, citation keys, abstracts, publications, and tags. Tags remain searchable but are not displayed on publication cards. Publication titles link to their best available external URL and fall back to the Zotero item page.
 
 ## Development
 

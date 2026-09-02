@@ -110,12 +110,6 @@ function ItemCard( { item, showAbstract } ) {
 					</span>
 				) }
 			</div>
-			{ item.tags.length > 0 && (
-				<p className="zotero-publication-tags">
-					<span>{ __( 'Tags:', 'nature-zotero-publications' ) }</span>{ ' ' }
-					{ item.tags.join( ', ' ) }
-				</p>
-			) }
 		</article>
 	);
 }
@@ -343,7 +337,7 @@ export default function Edit( { attributes, setAttributes } ) {
 							setAttributes( { itemsPerPage: value } )
 						}
 						min={ 1 }
-						max={ 50 }
+						max={ 100 }
 					/>
 				</PanelBody>
 				<PanelBody
