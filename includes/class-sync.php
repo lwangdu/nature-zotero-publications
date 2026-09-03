@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 class Sync {
 
 	const HOOK             = 'zotero_display_sync_batch';
-	const SCHEMA_VERSION   = 1;
+	const SCHEMA_VERSION   = 2;
 	const SCHEMA_OPTION    = 'zotero_display_schema_version';
 	const STATE_PREFIX     = 'zotero_display_sync_';
 	const PAGE_SIZE        = 100;
@@ -66,8 +66,11 @@ class Sync {
 			PRIMARY KEY  (id),
 			UNIQUE KEY source_item (source_key,item_key),
 			KEY source_sort (source_key,sort_index),
+			KEY source_token_sort (source_key,sync_token,sort_index),
 			KEY source_type (source_key,item_type),
+			KEY source_token_type (source_key,sync_token,item_type),
 			KEY source_year (source_key,date_year),
+			KEY source_token_year (source_key,sync_token,date_year),
 			KEY source_sync (source_key,sync_token)
 		) {$charset};";
 
@@ -81,6 +84,7 @@ class Sync {
 			PRIMARY KEY  (id),
 			UNIQUE KEY source_item_creator (source_key,item_key,creator_hash),
 			KEY source_creator (source_key,creator_name),
+			KEY source_token_creator (source_key,sync_token,creator_name),
 			KEY source_item (source_key,item_key),
 			KEY source_sync (source_key,sync_token)
 		) {$charset};";
