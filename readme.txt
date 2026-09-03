@@ -29,6 +29,9 @@ Features include:
 * Keyboard-accessible, on-demand author suggestions.
 * DOI, source, Zotero, and citation-key links and metadata.
 * A completed local index that avoids extra Zotero requests for visitor interactions.
+* 100-item default pagination.
+* Query-aligned database indexes for faster large-library display and filters.
+* Plugin-owned data cleanup on uninstall.
 
 == Installation ==
 
@@ -50,6 +53,14 @@ An API key is required for private libraries. Public Zotero libraries can be dis
 
 No. The key is used only for server-side requests and is not returned by the plugin's REST endpoint.
 
+= Does the plugin store Zotero data in the WordPress database? =
+
+Yes. Zotero publication data is stored in plugin-owned local index tables named with the site's database prefix, such as `wp_zotero_display_items` and `wp_zotero_display_creators`. The prefix may differ on your site.
+
+= What happens to plugin data when I delete the plugin? =
+
+Deleting the plugin through WordPress runs `uninstall.php`. It removes the plugin-owned Zotero index tables, plugin settings, schema and synchronization options, plugin transients, supported object-cache group data, and pending synchronization events. Deactivating the plugin does not drop the index tables.
+
 = Can a block display a specific collection? =
 
 Yes. Enter a Zotero collection key in the block settings to limit results to that collection.
@@ -57,6 +68,10 @@ Yes. Enter a Zotero collection key in the block settings to limit results to tha
 = Does the plugin display the complete library? =
 
 Yes. Zotero limits each API response to 100 items, so the first full-library synchronization runs in background batches. The existing cached results remain visible until the complete local index is ready.
+
+= How many publications display per page? =
+
+The block defaults to 100 items per page.
 
 = How does the author filter work? =
 
@@ -79,6 +94,14 @@ Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This c
 Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
 
 == Changelog ==
+
+= Unreleased =
+
+* Add uninstall cleanup for plugin-owned tables, options, transients, object-cache data, and scheduled synchronization events.
+* Add composite local-index database indexes for faster publication listing, facets, and author lookup.
+* Default block and REST fallback pagination to 100 items per page.
+* Cache completed server-rendered block fragments.
+* Keep Zotero tags searchable while removing tag display from publication cards.
 
 = 1.0.4 =
 

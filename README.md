@@ -21,9 +21,11 @@ Current version: **1.0.4**
 - Year and item-type filters
 - Accessible, on-demand author autocomplete
 - Linked titles, authors, publication details, item-type badges, dates, DOI, source and Zotero links, citation keys, and expandable abstracts
-- Configurable sorting, items per page, statistics, filters, search, and abstracts
+- Configurable sorting, 100-item default pagination, statistics, filters, search, and abstracts
 - Local querying after synchronization, without requesting Zotero again for every visitor interaction
+- Query-aligned local database indexes for faster large-library display, facets, and author filtering
 - Server-only handling of private Zotero API keys
+- Plugin-owned data cleanup on uninstall
 
 ## How synchronization works
 
@@ -40,6 +42,8 @@ Visitors continue to see the last completed generation while a refresh is runnin
 Version 1.0.2 stores each Zotero page with short multi-row writes and processes one page per background run. This substantially reduces write-lock time on SQLite-backed WordPress Studio sites while remaining compatible with MySQL.
 
 Version 1.0.4 processes up to four Zotero pages per background run, stops a run after 12 seconds, and polls first-sync progress every five seconds. The bounded worker improves throughput without returning to long row-by-row database locks. Off-screen publication cards use browser rendering containment to reduce initial layout and paint work on larger result pages.
+
+Recent updates cache completed server-rendered block fragments, default block and REST pagination to 100 items per page, and add composite database indexes for the main publication list, year/type facets, and author lookup queries.
 
 The cache-duration setting controls when a completed source becomes eligible for another background refresh. Changing connection settings or selecting **Clear Zotero Cache** removes both transient data and the local index so the source can synchronize again.
 
@@ -72,6 +76,8 @@ Each block can use the plugin defaults or override them with its own:
 
 Changing a block's library, collection, or sorting configuration creates a distinct source configuration and cache key.
 
+The block defaults to 100 items per page.
+
 ## Frontend performance and accessibility
 
 The first result page, year options, and item-type options are rendered by PHP. The [WordPress Interactivity API](https://developer.wordpress.org/block-editor/reference-guides/interactivity-api/) progressively enhances the controls without replacing the initial server-rendered content.
@@ -79,6 +85,8 @@ The first result page, year options, and item-type options are rendered by PHP. 
 The complete author index is not embedded in page HTML. After a visitor enters at least two characters, the browser requests a small set of author suggestions from the local creator index. The autocomplete supports mouse use and keyboard navigation with Arrow Down, Enter, Space, and Escape.
 
 Search, filter, and pagination requests omit the large facet collections they do not need. Small initial facets are cached briefly, and the private Zotero key is never placed in block context or browser requests.
+
+Completed initial block markup is cached in transients and invalidated when a synchronization generation completes. The local index schema includes composite indexes for the common source/token/sort, source/token/type, source/token/year, and source/token/creator query patterns.
 
 ## REST endpoints
 
@@ -96,6 +104,17 @@ The plugin displays Zotero's native `citationKey` value when present. For older 
 Child attachments and annotations are excluded. Top-level standalone attachments remain visible so the total aligns more closely with Zotero's **items in this view** count. Untitled top-level records receive an **Untitled** display label.
 
 General search covers titles, authors, dates, DOI values, citation keys, abstracts, publications, and tags. Tags remain searchable but are not displayed on publication cards. Publication titles link to their best available external URL and fall back to the Zotero item page.
+
+## Data storage and uninstall
+
+The plugin stores Zotero publication data in plugin-owned WordPress database tables:
+
+- `{$wpdb->prefix}zotero_display_items`
+- `{$wpdb->prefix}zotero_display_creators`
+
+The private Zotero API key, default library settings, schema version, synchronization state, and transient cache records are stored through WordPress options/transients. The API key is used only for server-side Zotero requests and is not included in browser markup, REST responses, or scheduled-event arguments.
+
+Deleting the plugin through WordPress runs `uninstall.php`, which removes the plugin-owned tables, settings, schema and sync options, transients, object-cache group data when supported, and pending synchronization events. Deactivation keeps the local index in place and only clears temporary caches and scheduled work.
 
 ## Development
 
@@ -135,6 +154,7 @@ src/
   style.scss                    Shared frontend and editor styles
   editor.scss                   Editor-only styles
 build/                          Production assets generated by npm run build
+uninstall.php                   Plugin-owned data cleanup on deletion
 ```
 
 ## Troubleshooting
@@ -156,6 +176,14 @@ Open **Settings → Nature Zotero Publications** and select **Clear Zotero Cache
 Compare against Zotero's top-level **items in this view** count. Child attachments and annotations are intentionally excluded, while standalone attachments are included.
 
 ## Changelog
+
+### Unreleased
+
+- Added `uninstall.php` to remove plugin-owned tables, options, transients, object-cache data, and scheduled sync events when the plugin is deleted.
+- Added composite local-index database indexes for faster publication listing, facets, and author lookup.
+- Defaulted block and REST fallback pagination to 100 items per page.
+- Cached completed server-rendered block fragments.
+- Kept Zotero tags searchable while removing tag display from publication cards.
 
 ### 1.0.4
 

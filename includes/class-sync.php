@@ -132,6 +132,29 @@ class Sync {
 	}
 
 	/**
+	 * Start a source sync and run the first bounded batch during the current request.
+	 *
+	 * This avoids showing only a "preparing" state on the first page view after
+	 * a cache clear, while still keeping larger libraries on the background
+	 * worker path after the first batch.
+	 *
+	 * @param array $args Zotero source query arguments.
+	 * @return array Current sync state after the first batch attempt.
+	 */
+	public static function prime_first_batch( array $args ) {
+		$args       = self::normalize_source_args( $args );
+		$source_key = self::source_key( $args );
+		$state      = self::ensure_scheduled( $args );
+
+		if ( 'syncing' === $state['status'] && empty( $state['processed'] ) ) {
+			self::run_batch( $source_key );
+			$state = self::get_state( $source_key );
+		}
+
+		return $state;
+	}
+
+	/**
 	 * Run a bounded number of Zotero pages for one source.
 	 *
 	 * @param string $source_key Source identifier.

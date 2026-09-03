@@ -32,7 +32,6 @@ require_once ZOTERO_DISPLAY_DIR . 'includes/class-block.php';
  * Boot the plugin.
  */
 function zotero_display_init() {
-	Zotero_Display\Zotero_API::register_hooks();
 	Zotero_Display\Sync::register_hooks();
 	Zotero_Display\Settings::instance();
 	Zotero_Display\REST_Controller::instance();

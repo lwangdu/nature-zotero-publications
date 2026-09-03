@@ -33,10 +33,6 @@
 			"type": "number",
 			"default": 100
 		},
-		"columns": {
-			"type": "number",
-			"default": 3
-		},
 		"showStats": {
 			"type": "boolean",
 			"default": true

@@ -106,7 +106,6 @@ class Block {
 			'sortBy'        => 'date',
 			'sortDirection' => 'desc',
 			'itemsPerPage'  => 100,
-			'columns'       => 3,
 			'showStats'     => true,
 			'showFilters'   => true,
 			'showSearch'    => true,
@@ -123,7 +122,6 @@ class Block {
 			'collection'    => $attributes['collection'],
 			'sort'          => $attributes['sortBy'],
 			'direction'     => $attributes['sortDirection'],
-			'limit'         => Zotero_API::MAX_ITEMS,
 			'cache_minutes' => $settings['cache_minutes'],
 		);
 
@@ -144,6 +142,11 @@ class Block {
 		$include_facets = $attributes['showStats'] || $attributes['showFilters'];
 		$sync_result    = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
 		$sync_state     = Sync::ensure_scheduled( $query_args );
+
+		if ( false === $sync_result && empty( $sync_state['processed'] ) ) {
+			$sync_state  = Sync::prime_first_batch( $query_args );
+			$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
+		}
 
 		if ( false !== $sync_result ) {
 			$first_page  = $sync_result['items'];

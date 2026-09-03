@@ -1,6 +1,6 @@
 <?php
 /**
- * Zotero API client with transient-based caching.
+ * Zotero API client for background synchronization.
  *
  * @package ZoteroDisplay
  */
@@ -10,166 +10,11 @@ namespace Zotero_Display;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Fetches, normalizes, and caches Zotero library data.
+ * Fetches and normalizes Zotero library data.
  */
 class Zotero_API {
 
-	const API_BASE     = 'https://api.zotero.org';
-	const MAX_ITEMS    = 2000;
-	const REFRESH_HOOK = 'zotero_display_refresh_cache';
-
-	/**
-	 * Register the background cache refresh callback.
-	 *
-	 * @return void
-	 */
-	public static function register_hooks() {
-		add_action( self::REFRESH_HOOK, array( __CLASS__, 'refresh_cache' ) );
-	}
-
-	/**
-	 * Fetch items for a library/collection, using a transient cache.
-	 *
-	 * @param array $args {
-	 *     Query arguments.
-	 *     @type string $library_type 'user' or 'group'.
-	 *     @type string $library_id   Numeric Zotero library/user/group ID.
-	 *     @type string $api_key      Zotero API key (optional for public libraries).
-	 *     @type string $collection   Optional collection key.
-	 *     @type string $sort         Zotero 'sort' param (e.g. 'date', 'title', 'creator').
-	 *     @type string $direction    'asc' or 'desc'.
-	 *     @type int    $limit        Max items to request from Zotero (cap 100 per call; we paginate internally up to a sane max).
-	 *     @type string $item_type    Optional itemType filter passed to Zotero (e.g. 'journalArticle').
-	 *     @type int    $cache_minutes Cache TTL override.
-	 * }
-	 * @return array|\WP_Error Array of normalized items, or WP_Error on failure.
-	 */
-	public static function get_items( array $args ) {
-		$defaults      = array(
-			'library_type'  => 'user',
-			'library_id'    => '',
-			'api_key'       => '',
-			'collection'    => '',
-			'sort'          => 'date',
-			'direction'     => 'desc',
-			'limit'         => self::MAX_ITEMS,
-			'item_type'     => '',
-			'cache_minutes' => 60,
-		);
-		$args          = wp_parse_args( $args, $defaults );
-		$args['limit'] = min( self::MAX_ITEMS, max( 1, (int) $args['limit'] ) );
-
-		if ( empty( $args['library_id'] ) ) {
-			return new \WP_Error( 'zotero_missing_library_id', __( 'A Zotero library ID is required.', 'nature-zotero-publications' ) );
-		}
-
-		$cache_key = self::build_cache_key( $args );
-		$cached    = get_transient( $cache_key );
-
-		if ( false !== $cached && is_array( $cached ) ) {
-			return $cached;
-		}
-
-		$stale = get_transient( $cache_key . '_stale' );
-		if ( is_array( $stale ) ) {
-			self::schedule_refresh( $args );
-			return $stale;
-		}
-
-		$items = self::fetch_from_api( $args );
-
-		if ( is_wp_error( $items ) ) {
-			// On failure, fall back to a stale cache if one exists rather than showing nothing.
-			$stale = get_transient( $cache_key . '_stale' );
-			if ( is_array( $stale ) ) {
-				return $stale;
-			}
-			return $items;
-		}
-
-		self::store_cached_items( $cache_key, $items, $args['cache_minutes'] );
-
-		return $items;
-	}
-
-	/**
-	 * Refresh a stale cache entry outside the visitor's page request.
-	 *
-	 * The API key is intentionally excluded from the scheduled event arguments
-	 * and read from the server-side plugin settings only when the event runs.
-	 *
-	 * @param array $args Zotero query arguments without an API key.
-	 * @return void
-	 */
-	public static function refresh_cache( $args ) {
-		$settings        = Settings::get_settings();
-		$args['api_key'] = $settings['api_key'];
-		$items           = self::fetch_from_api( $args );
-
-		if ( is_wp_error( $items ) ) {
-			return;
-		}
-
-		self::store_cached_items( self::build_cache_key( $args ), $items, $args['cache_minutes'] );
-	}
-
-	/**
-	 * Schedule one background refresh for a stale query.
-	 *
-	 * @param array $args Zotero query arguments.
-	 * @return void
-	 */
-	private static function schedule_refresh( $args ) {
-		unset( $args['api_key'] );
-		$event_args = array( $args );
-
-		if ( ! wp_next_scheduled( self::REFRESH_HOOK, $event_args ) ) {
-			wp_schedule_single_event( time() + 1, self::REFRESH_HOOK, $event_args );
-		}
-	}
-
-	/**
-	 * Store the active cache and its longer-lived stale fallback.
-	 *
-	 * @param string $cache_key    Transient cache key.
-	 * @param array  $items        Normalized Zotero items.
-	 * @param int    $cache_minutes Active cache duration in minutes.
-	 * @return void
-	 */
-	private static function store_cached_items( $cache_key, $items, $cache_minutes ) {
-		$ttl = max( 1, (int) $cache_minutes ) * MINUTE_IN_SECONDS;
-		set_transient( $cache_key, $items, $ttl );
-		set_transient( $cache_key . '_stale', $items, 7 * DAY_IN_SECONDS );
-	}
-
-	/**
-	 * Perform the actual HTTP request(s) to Zotero, paginating as needed, and normalize results.
-	 *
-	 * @param array $args Query args (already merged with defaults).
-	 * @return array|\WP_Error
-	 */
-	private static function fetch_from_api( array $args ) {
-		$per_page  = min( 100, max( 1, (int) $args['limit'] ) );
-		$max_items = max( $per_page, (int) $args['limit'] ); // allow requesting more than 100 by paginating.
-		$all_items = array();
-		$start     = 0;
-
-		do {
-			$page = self::fetch_page( $args, $start, $per_page );
-			if ( is_wp_error( $page ) ) {
-				return $page;
-			}
-
-			$all_items = array_merge( $all_items, $page['items'] );
-
-			$start                += $per_page;
-			$got                   = $page['raw_count'];
-			$normalized_item_count = count( $all_items );
-
-		} while ( $got === $per_page && $normalized_item_count < $max_items );
-
-		return array_slice( $all_items, 0, $max_items );
-	}
+	const API_BASE = 'https://api.zotero.org';
 
 	/**
 	 * Fetch one page of top-level Zotero items for a background sync.
@@ -376,27 +221,6 @@ class Zotero_API {
 	}
 
 	/**
-	 * Build a unique, deterministic transient key for a given query.
-	 *
-	 * @param array $args Normalized query args.
-	 * @return string
-	 */
-	private static function build_cache_key( array $args ) {
-		$relevant = array(
-			'normalization_version' => 7,
-			'library_type'          => $args['library_type'],
-			'library_id'            => $args['library_id'],
-			'collection'            => $args['collection'],
-			'sort'                  => $args['sort'],
-			'direction'             => $args['direction'],
-			'limit'                 => $args['limit'],
-			'item_type'             => $args['item_type'],
-		);
-		$hash     = md5( wp_json_encode( $relevant ) );
-		// Transient keys have a 172 char limit on key name (longer with object cache), keep it short.
-		return ZOTERO_DISPLAY_TRANSIENT_PREFIX . $hash;
-	}
-
 	/**
 	 * Clear every transient this plugin has created.
 	 *
