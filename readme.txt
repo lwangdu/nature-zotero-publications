@@ -3,7 +3,7 @@ Contributors: lwangdu
 Tags: zotero, bibliography, citations, gutenberg, publications
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -95,7 +95,7 @@ Make sure User Library or Group Library matches the numeric ID. Private user or 
 
 == Changelog ==
 
-= Unreleased =
+= 1.0.5 =
 
 * Add uninstall cleanup for plugin-owned tables, options, transients, object-cache data, and scheduled synchronization events.
 * Add composite local-index database indexes for faster publication listing, facets, and author lookup.
