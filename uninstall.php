@@ -39,15 +39,15 @@ function zotero_display_uninstall_site() {
 }
 
 if ( is_multisite() ) {
-	$site_ids = get_sites(
+	$zotero_display_site_ids = get_sites(
 		array(
 			'fields' => 'ids',
 			'number' => 0,
 		)
 	);
 
-	foreach ( $site_ids as $site_id ) {
-		switch_to_blog( (int) $site_id );
+	foreach ( $zotero_display_site_ids as $zotero_display_site_id ) {
+		switch_to_blog( (int) $zotero_display_site_id );
 		zotero_display_uninstall_site();
 		restore_current_blog();
 	}

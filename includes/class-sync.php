@@ -330,7 +330,7 @@ class Sync {
 		$search     = sanitize_text_field( $search );
 		$sync_token = ! empty( $state['ready'] ) ? $state['active_token'] : ( isset( $state['sync_token'] ) ? $state['sync_token'] : '' );
 
-		if ( empty( $sync_token ) || 2 > mb_strlen( $search ) ) {
+		if ( empty( $sync_token ) || 2 > self::string_length( $search ) ) {
 			return false;
 		}
 
@@ -368,6 +368,29 @@ class Sync {
 		$source_key = self::source_key( self::normalize_source_args( $args ) );
 
 		return self::public_state( self::get_state( $source_key ) );
+	}
+
+	/**
+	 * Return the non-sensitive source arguments used by public REST requests.
+	 *
+	 * @param array $args Source arguments.
+	 * @return array Public source arguments.
+	 */
+	public static function public_source_args( array $args ) {
+		$source_args = self::normalize_source_args( $args );
+		unset( $source_args['cache_minutes'] );
+
+		return $source_args;
+	}
+
+	/**
+	 * Sign a rendered block's public source arguments.
+	 *
+	 * @param array $args Source arguments.
+	 * @return string Source signature.
+	 */
+	public static function source_signature( array $args ) {
+		return wp_hash( wp_json_encode( self::public_source_args( $args ) ) );
 	}
 
 	/**
@@ -714,6 +737,16 @@ class Sync {
 		unset( $key_args['cache_minutes'] );
 
 		return md5( wp_json_encode( $key_args ) );
+	}
+
+	/**
+	 * Get a string length without requiring mbstring.
+	 *
+	 * @param string $value String value.
+	 * @return int String length.
+	 */
+	public static function string_length( $value ) {
+		return function_exists( 'mb_strlen' ) ? mb_strlen( $value ) : strlen( $value );
 	}
 
 	/**

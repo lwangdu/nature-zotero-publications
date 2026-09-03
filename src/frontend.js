@@ -14,6 +14,7 @@ function sourceParams( context ) {
 		collection: context.collection,
 		sort: context.sortBy,
 		direction: context.sortDirection,
+		source_signature: context.sourceSignature,
 	};
 }
 

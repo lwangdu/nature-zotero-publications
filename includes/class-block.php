@@ -170,6 +170,7 @@ class Block {
 
 		$context = array(
 			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'sourceSignature'      => Sync::source_signature( $query_args ),
 			'libraryType'          => $query_args['library_type'],
 			'libraryId'            => $query_args['library_id'],
 			'collection'           => $attributes['collection'],
@@ -447,6 +448,7 @@ class Block {
 
 		$context       = array(
 			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'sourceSignature'      => Sync::source_signature( $query_args ),
 			'libraryType'          => $query_args['library_type'],
 			'libraryId'            => $query_args['library_id'],
 			'collection'           => $query_args['collection'],

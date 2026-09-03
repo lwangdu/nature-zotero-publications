@@ -3,7 +3,7 @@ Contributors: lwangdu
 Tags: zotero, bibliography, citations, gutenberg, publications
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -18,7 +18,7 @@ The block includes search, year/type/author filters, entry counts, and paginatio
 
 The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the local index. During the first synchronization, already-indexed publications and controls remain available alongside an accessible progress indicator.
 
-Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses.
+Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses. Public REST requests are limited to server-signed rendered block sources.
 
 Features include:
 
@@ -28,6 +28,7 @@ Features include:
 * General search plus year, item-type, and author filters.
 * Keyboard-accessible, on-demand author suggestions.
 * DOI, source, Zotero, and citation-key links and metadata.
+* Server-signed public REST requests that avoid arbitrary visitor-triggered source synchronization.
 * A completed local index that avoids extra Zotero requests for visitor interactions.
 * 100-item default pagination.
 * Query-aligned database indexes for faster large-library display and filters.
@@ -94,6 +95,13 @@ Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This c
 Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
 
 == Changelog ==
+
+= 1.0.6 =
+
+* Require server-signed rendered block sources for public REST publication and author requests.
+* Add a PHP string-length fallback for hosts without mbstring.
+* Preserve canonical DOI slashes in DOI links.
+* Improve uninstall cleanup variable prefixing and refresh REST security documentation.
 
 = 1.0.5 =
 

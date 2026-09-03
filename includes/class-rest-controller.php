@@ -57,20 +57,21 @@ class REST_Controller {
 				'callback'            => array( $this, 'get_items' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'library_type'    => array( 'type' => 'string' ),
-					'library_id'      => array( 'type' => 'string' ),
-					'collection'      => array( 'type' => 'string' ),
-					'sort'            => array( 'type' => 'string' ),
-					'direction'       => array( 'type' => 'string' ),
-					'item_type'       => array( 'type' => 'string' ),
-					'search'          => array( 'type' => 'string' ),
-					'filter_type'     => array( 'type' => 'string' ),
-					'filter_year'     => array( 'type' => 'string' ),
-					'filter_author'   => array( 'type' => 'string' ),
-					'include_facets'  => array( 'type' => 'boolean' ),
-					'include_authors' => array( 'type' => 'boolean' ),
-					'page'            => array( 'type' => 'integer' ),
-					'per_page'        => array( 'type' => 'integer' ),
+					'library_type'     => array( 'type' => 'string' ),
+					'library_id'       => array( 'type' => 'string' ),
+					'collection'       => array( 'type' => 'string' ),
+					'sort'             => array( 'type' => 'string' ),
+					'direction'        => array( 'type' => 'string' ),
+					'item_type'        => array( 'type' => 'string' ),
+					'search'           => array( 'type' => 'string' ),
+					'filter_type'      => array( 'type' => 'string' ),
+					'filter_year'      => array( 'type' => 'string' ),
+					'filter_author'    => array( 'type' => 'string' ),
+					'include_facets'   => array( 'type' => 'boolean' ),
+					'include_authors'  => array( 'type' => 'boolean' ),
+					'page'             => array( 'type' => 'integer' ),
+					'per_page'         => array( 'type' => 'integer' ),
+					'source_signature' => array( 'type' => 'string' ),
 				),
 			)
 		);
@@ -83,17 +84,18 @@ class REST_Controller {
 				'callback'            => array( $this, 'get_authors' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'library_type' => array( 'type' => 'string' ),
-					'library_id'   => array( 'type' => 'string' ),
-					'collection'   => array( 'type' => 'string' ),
-					'sort'         => array( 'type' => 'string' ),
-					'direction'    => array( 'type' => 'string' ),
-					'item_type'    => array( 'type' => 'string' ),
-					'search'       => array(
+					'library_type'     => array( 'type' => 'string' ),
+					'library_id'       => array( 'type' => 'string' ),
+					'collection'       => array( 'type' => 'string' ),
+					'sort'             => array( 'type' => 'string' ),
+					'direction'        => array( 'type' => 'string' ),
+					'item_type'        => array( 'type' => 'string' ),
+					'source_signature' => array( 'type' => 'string' ),
+					'search'           => array(
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
-					'limit'        => array(
+					'limit'            => array(
 						'type'    => 'integer',
 						'default' => 30,
 						'minimum' => 1,
@@ -133,6 +135,35 @@ class REST_Controller {
 	}
 
 	/**
+	 * Confirm a public REST request came from a rendered block source.
+	 *
+	 * Authenticated editor previews may request unsaved source settings; public
+	 * visitors must provide the server-issued signature from block markup.
+	 *
+	 * @param \WP_REST_Request $request    Request object.
+	 * @param array            $query_args Resolved Zotero source arguments.
+	 * @return true|\WP_Error True when authorized, or an error response.
+	 */
+	private function authorize_source_request( \WP_REST_Request $request, array $query_args ) {
+		if ( current_user_can( 'edit_posts' ) ) {
+			return true;
+		}
+
+		$signature = (string) $request->get_param( 'source_signature' );
+		$expected  = Sync::source_signature( $query_args );
+
+		if ( empty( $signature ) || ! hash_equals( $expected, $signature ) ) {
+			return new \WP_Error(
+				'zotero_display_invalid_source',
+				__( 'This Zotero source is not available from the public API.', 'nature-zotero-publications' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		return true;
+	}
+
+	/**
 	 * GET /zotero-display/v1/items
 	 *
 	 * Fetches the full (cached) item set for the configured library/collection,
@@ -151,6 +182,11 @@ class REST_Controller {
 				__( 'No Zotero library ID configured. Set one in Settings → Nature Zotero Publications, or on this block.', 'nature-zotero-publications' ),
 				array( 'status' => 400 )
 			);
+		}
+
+		$authorized = $this->authorize_source_request( $request, $query_args );
+		if ( is_wp_error( $authorized ) ) {
+			return $authorized;
 		}
 
 		$search             = $request->get_param( 'search' );
@@ -238,7 +274,12 @@ class REST_Controller {
 			);
 		}
 
-		if ( 2 > mb_strlen( $search ) ) {
+		$authorized = $this->authorize_source_request( $request, $query_args );
+		if ( is_wp_error( $authorized ) ) {
+			return $authorized;
+		}
+
+		if ( 2 > Sync::string_length( $search ) ) {
 			return rest_ensure_response( array( 'authors' => array() ) );
 		}
 

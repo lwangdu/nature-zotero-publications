@@ -136,7 +136,7 @@ class Zotero_API {
 		}
 
 		$doi          = isset( $data['DOI'] ) ? self::normalize_doi( $data['DOI'] ) : '';
-		$doi_url      = $doi ? 'https://doi.org/' . rawurlencode( $doi ) : '';
+		$doi_url      = $doi ? esc_url_raw( 'https://doi.org/' . $doi ) : '';
 		$source_url   = ! empty( $data['url'] ) ? esc_url_raw( $data['url'] ) : '';
 		$external_url = $source_url ? $source_url : $doi_url;
 		$citation_key = self::extract_citation_key( $data );
@@ -220,7 +220,6 @@ class Zotero_API {
 		return ucwords( $label );
 	}
 
-	/**
 	/**
 	 * Clear every transient this plugin has created.
 	 *

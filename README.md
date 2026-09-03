@@ -2,7 +2,7 @@
 
 Nature Zotero Publications is a dynamic WordPress block that displays a complete Zotero user or group library as a searchable, filterable bibliography.
 
-Current version: **1.0.5**
+Current version: **1.0.6**
 
 ## Requirements
 
@@ -84,7 +84,7 @@ The first result page, year options, and item-type options are rendered by PHP. 
 
 The complete author index is not embedded in page HTML. After a visitor enters at least two characters, the browser requests a small set of author suggestions from the local creator index. The autocomplete supports mouse use and keyboard navigation with Arrow Down, Enter, Space, and Escape.
 
-Search, filter, and pagination requests omit the large facet collections they do not need. Small initial facets are cached briefly, and the private Zotero key is never placed in block context or browser requests.
+Search, filter, and pagination requests omit the large facet collections they do not need. Small initial facets are cached briefly, public REST requests are limited to server-signed rendered block sources, and the private Zotero key is never placed in block context or browser requests.
 
 Completed initial block markup is cached in transients and invalidated when a synchronization generation completes. The local index schema includes composite indexes for the common source/token/sort, source/token/type, source/token/year, and source/token/creator query patterns.
 
@@ -95,7 +95,7 @@ The plugin provides two public, read-only WordPress REST routes:
 - `GET /wp-json/zotero-display/v1/items` returns normalized, paginated publications from the completed local index.
 - `GET /wp-json/zotero-display/v1/authors` returns a limited set of author suggestions after at least two search characters.
 
-These routes identify the library or collection but never return or accept the saved private API key. Zotero requests are performed only on the server.
+These routes identify the library or collection with a server-issued source signature from rendered block markup, but never return or accept the saved private API key. Zotero requests are performed only on the server.
 
 ## Publication data
 
@@ -176,6 +176,13 @@ Open **Settings → Nature Zotero Publications** and select **Clear Zotero Cache
 Compare against Zotero's top-level **items in this view** count. Child attachments and annotations are intentionally excluded, while standalone attachments are included.
 
 ## Changelog
+
+### 1.0.6
+
+- Require server-signed rendered block sources for public REST publication and author requests.
+- Add a PHP string-length fallback for hosts without mbstring.
+- Preserve canonical DOI slashes in DOI links.
+- Improve uninstall cleanup variable prefixing and refresh REST security documentation.
 
 ### 1.0.5
 
