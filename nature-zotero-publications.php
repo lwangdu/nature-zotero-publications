@@ -29,6 +29,25 @@ require_once ZOTERO_DISPLAY_DIR . 'includes/class-rest-controller.php';
 require_once ZOTERO_DISPLAY_DIR . 'includes/class-block.php';
 
 /**
+ * Add a quick Settings link to the Plugins screen.
+ *
+ * @param array $links Existing plugin action links.
+ * @return array Updated plugin action links.
+ */
+function zotero_display_plugin_action_links( $links ) {
+	$settings_link = sprintf(
+		'<a href="%1$s">%2$s</a>',
+		esc_url( admin_url( 'options-general.php?page=nature-zotero-publications' ) ),
+		esc_html__( 'Settings', 'nature-zotero-publications' )
+	);
+
+	array_unshift( $links, $settings_link );
+
+	return $links;
+}
+add_filter( 'plugin_action_links_' . plugin_basename( ZOTERO_DISPLAY_FILE ), 'zotero_display_plugin_action_links' );
+
+/**
  * Boot the plugin.
  */
 function zotero_display_init() {

@@ -61,15 +61,20 @@ php -l includes/class-zotero-api.php
 
 ## Coding Standards
 
-- Follow WordPress PHP Coding Standards.
+- Follow the WordPress coding standards for PHP, JavaScript, CSS, HTML, inline documentation, and accessibility.
 - Keep classes namespaced under `Zotero_Display`.
 - Keep global functions, constants, hooks, options, transients, and REST routes consistently prefixed with `zotero_display` or `ZOTERO_DISPLAY`.
-- Sanitize all request/admin inputs.
+- Keep the plugin directory, main plugin file, text domain, block metadata textdomain, and package/readme slugs aligned to `nature-zotero-publications`.
+- Keep user-facing source strings in English and translatable with text domain `nature-zotero-publications`.
+- Sanitize all request, REST, block attribute, and admin inputs as close to the boundary as possible.
 - Escape all output at render time.
+- Check capabilities before admin-only actions and verify nonces for admin form actions.
 - Use `$wpdb->prepare()` for dynamic SQL values and document unavoidable direct DB queries with targeted PHPCS ignores.
 - Do not expose Zotero API keys in markup, JavaScript, REST responses, scheduled-event arguments, logs, or errors.
 - Public REST routes must keep explicit permission callbacks and source-signature validation where applicable.
 - Keep pagination and API request sizes bounded.
+- Keep the Plugins screen Settings action link wired to `options-general.php?page=nature-zotero-publications`.
+- Do not introduce new third-party dependencies unless the benefit is clear and the release/package impact is documented.
 
 ## Gutenberg And Frontend Rules
 
@@ -78,6 +83,8 @@ php -l includes/class-zotero-api.php
 - Use the WordPress Interactivity API for frontend search, filters, pagination, sync polling, and client-side state.
 - Keep user-facing strings translatable with text domain `nature-zotero-publications`.
 - Preserve keyboard and screen-reader support for search, filters, pagination, loading/progress states, and author autocomplete.
+- Keep generated markup semantic and valid. Use labels, headings, status regions, and ARIA only where they improve accessibility.
+- Keep CSS scoped to the plugin/block classes and avoid broad selectors that can affect the active theme or other plugins.
 
 ## Data And Cleanup
 
@@ -87,6 +94,10 @@ The plugin stores synchronized Zotero data in plugin-owned local tables:
 - `{$wpdb->prefix}zotero_display_creators`
 
 Settings and synchronization state are stored in WordPress options/transients. `uninstall.php` must remove plugin-owned tables, settings, schema/sync options, transients, supported object-cache group data, and scheduled sync events. Deactivation should not drop persistent tables.
+
+The custom tables are intentional because the plugin needs a local, searchable Zotero publication index. Do not add more custom tables unless WordPress posts, taxonomies, metadata, or options are not suitable.
+
+When data storage or deletion behavior changes, update `README.md` and `readme.txt` so administrators understand what is stored and what is removed on uninstall.
 
 ## Release Workflow
 
@@ -101,8 +112,9 @@ Before committing or pushing:
    - `package-lock.json`
    - `README.md`
    - `readme.txt`
-5. Review `git diff --check`.
-6. After push, report the commit hash, branch, remote, remote hash alignment, and clean-tree status.
+5. Update `Tested up to` only after running compatibility checks against that WordPress version.
+6. Review `git diff --check`.
+7. After push, report the commit hash, branch, remote, remote hash alignment, and clean-tree status.
 
 ## Ask Before
 

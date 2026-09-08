@@ -57,21 +57,63 @@ class REST_Controller {
 				'callback'            => array( $this, 'get_items' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'library_type'     => array( 'type' => 'string' ),
-					'library_id'       => array( 'type' => 'string' ),
-					'collection'       => array( 'type' => 'string' ),
-					'sort'             => array( 'type' => 'string' ),
-					'direction'        => array( 'type' => 'string' ),
-					'item_type'        => array( 'type' => 'string' ),
-					'search'           => array( 'type' => 'string' ),
-					'filter_type'      => array( 'type' => 'string' ),
-					'filter_year'      => array( 'type' => 'string' ),
-					'filter_author'    => array( 'type' => 'string' ),
+					'library_type'     => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'library_id'       => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'collection'       => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'sort'             => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'direction'        => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'item_type'        => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'search'           => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'filter_type'      => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'filter_year'      => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'filter_author'    => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 					'include_facets'   => array( 'type' => 'boolean' ),
 					'include_authors'  => array( 'type' => 'boolean' ),
-					'page'             => array( 'type' => 'integer' ),
-					'per_page'         => array( 'type' => 'integer' ),
-					'source_signature' => array( 'type' => 'string' ),
+					'page'             => array(
+						'type'    => 'integer',
+						'default' => 1,
+						'minimum' => 1,
+					),
+					'per_page'         => array(
+						'type'    => 'integer',
+						'default' => 100,
+						'minimum' => 1,
+						'maximum' => 100,
+					),
+					'source_signature' => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 				),
 			)
 		);
@@ -84,13 +126,34 @@ class REST_Controller {
 				'callback'            => array( $this, 'get_authors' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'library_type'     => array( 'type' => 'string' ),
-					'library_id'       => array( 'type' => 'string' ),
-					'collection'       => array( 'type' => 'string' ),
-					'sort'             => array( 'type' => 'string' ),
-					'direction'        => array( 'type' => 'string' ),
-					'item_type'        => array( 'type' => 'string' ),
-					'source_signature' => array( 'type' => 'string' ),
+					'library_type'     => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'library_id'       => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'collection'       => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'sort'             => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'direction'        => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'item_type'        => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'source_signature' => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 					'search'           => array(
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
