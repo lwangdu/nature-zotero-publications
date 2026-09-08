@@ -11,6 +11,20 @@ metadata:
 
 Use this skill when working on the Nature Zotero Publications WordPress plugin, including plugin architecture, Gutenberg block behavior, REST endpoints, Zotero synchronization, administrative screens, local database tables, frontend interactivity, accessibility, performance, or release preparation.
 
+## Project Map
+
+Use this map to start in the right place:
+
+- Plugin lifecycle, constants, activation, deactivation, and Plugins screen links: `nature-zotero-publications.php`.
+- Admin settings, API key storage, default Zotero source, and manual cache clearing: `includes/class-settings.php`.
+- Dynamic block registration, server-rendered markup, fragment cache, accessibility markup, and initial frontend state: `includes/class-block.php`.
+- Public REST routes for items and author autocomplete: `includes/class-rest-controller.php`.
+- Local Zotero index tables, synchronization state, database queries, indexes, and source signatures: `includes/class-sync.php`.
+- Zotero API requests, normalization, URL handling, creator formatting, and API error handling: `includes/class-zotero-api.php`.
+- Block metadata and editor controls: `src/block.json`, `src/edit.js`, and generated `build/`.
+- Frontend Interactivity API behavior: `src/frontend.js` and generated `build/frontend.js`.
+- Storage/deletion documentation: `README.md`, `readme.txt`, and `uninstall.php`.
+
 ## Before Changing Code
 
 1. Inspect the repository structure and existing documentation.
@@ -18,6 +32,7 @@ Use this skill when working on the Nature Zotero Publications WordPress plugin, 
 3. Identify the actual build, lint, format, and test commands. Do not invent commands that are not configured.
 4. Confirm the minimum WordPress and PHP versions, text domain, namespace, plugin prefix, REST namespace, and existing security patterns.
 5. Check for uncommitted changes and avoid overwriting unrelated work.
+6. For WordPress-specific work, use the matching official WordPress Agent Skill when available; use this file for the project-specific details those general skills will not know.
 
 ## PHP
 
@@ -45,6 +60,7 @@ Use this skill when working on the Nature Zotero Publications WordPress plugin, 
 - Set sensible timeouts and handle API errors, empty responses, rate limits, and malformed data.
 - Bound pagination, response sizes, and request frequency.
 - Cache responses only when the cache does not expose private data.
+- Do not expose arbitrary saved plugin settings through public REST. Public visitors may only query a source that was already rendered into block markup and signed by the server.
 
 ## Blocks And JavaScript
 
@@ -85,6 +101,16 @@ Use this skill when working on the Nature Zotero Publications WordPress plugin, 
 - Keep `uninstall.php` responsible for deleting plugin-owned tables, settings, schema/sync options, transients, supported object-cache group data, and scheduled sync events.
 - Document any changed storage or deletion behavior in `README.md` and `readme.txt`.
 - For performance work, trace the actual request, render, REST, sync, cache, and database path before changing cache strategy.
+- Keep first-page rendering fast when the local index already exists. Avoid making frontend page render wait on full Zotero synchronization.
+- Keep sync work resumable and bounded so cache-clearing a small library does not make the page appear stalled longer than necessary.
+
+## Common Change Paths
+
+- **Slow page load:** inspect `includes/class-block.php`, `includes/class-rest-controller.php`, `includes/class-sync.php`, and `src/frontend.js`; measure both initial HTML response time and REST polling behavior before editing.
+- **Pagination or filters:** update block attributes/defaults, PHP query handling, REST args, frontend state, generated `build/`, and docs together.
+- **Zotero data fields:** update API normalization, database schema/storage, renderer output, REST responses, editor preview if relevant, and docs.
+- **Storage lifecycle:** update activation/install, schema versioning, `uninstall.php`, README/readme storage notes, and manual verification steps.
+- **Public API security:** check source signatures, route args, permission callbacks, API-key handling, and response payloads together.
 
 ## Validation
 
@@ -106,6 +132,8 @@ git diff --check
 ```
 
 Manually verify activation, editor registration, frontend rendering, responsive behavior, API success and failure states, caching, permissions, and backward compatibility when relevant.
+
+For performance-sensitive changes, also capture before/after timings for the affected page or REST endpoint. Record whether the measurement is local Studio runtime evidence or only static analysis.
 
 ## Ask Before
 
