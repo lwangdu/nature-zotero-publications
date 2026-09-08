@@ -18,7 +18,7 @@ class Block {
 	const FRAGMENT_CACHE_PREFIX = 'zotero_display_fragment_';
 
 	/** Increment when cached block markup changes. */
-	const FRAGMENT_CACHE_VERSION = 2;
+	const FRAGMENT_CACHE_VERSION = 3;
 
 	/** Option containing fragment-cache transient keys for explicit invalidation. */
 	const FRAGMENT_CACHE_KEYS_OPTION = 'zotero_display_fragment_cache_keys';
@@ -164,47 +164,49 @@ class Block {
 			: '';
 
 		$context = array(
-			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
-			'sourceSignature'      => Sync::source_signature( $query_args ),
-			'libraryType'          => $query_args['library_type'],
-			'libraryId'            => $query_args['library_id'],
-			'collection'           => $attributes['collection'],
-			'sortBy'               => $attributes['sortBy'],
-			'sortDirection'        => $attributes['sortDirection'],
-			'perPage'              => $per_page,
-			'showAbstract'         => (bool) $attributes['showAbstract'],
-			'page'                 => 1,
-			'totalPages'           => $total_pages,
-			'totalItems'           => $total,
-			'search'               => '',
-			'filterType'           => '',
-			'filterYear'           => '',
-			'filterAuthor'         => '',
-			'authorQuery'          => '',
-			'authorSuggestions'    => array(),
-			'authorOpen'           => false,
-			'activeAuthorIndex'    => -1,
-			'items'                => array(),
-			'hasFetched'           => false,
-			'isLoading'            => false,
-			'isEmpty'              => false,
-			'message'              => __( 'No items match your filters.', 'nature-zotero-publications' ),
-			'noResultsMessage'     => __( 'No items match your filters.', 'nature-zotero-publications' ),
-			'errorMessage'         => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
-			'undatedLabel'         => __( 'Undated', 'nature-zotero-publications' ),
-			'inLabel'              => __( 'In:', 'nature-zotero-publications' ),
-			'pageLabel'            => __( 'Page', 'nature-zotero-publications' ),
-			'requestId'            => 0,
-			'authorRequestId'      => 0,
-			'syncProcessed'        => (int) $public_state['processed'],
-			'syncTotal'            => (int) $public_state['total'],
-			'syncProgressMax'      => max( 1, (int) $public_state['total'] ),
-			'syncMessage'          => $sync_message,
-			/* translators: 1: processed publication count, 2: total publication count. */
-			'syncProgressTemplate' => __( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'nature-zotero-publications' ),
-			'syncPreparingMessage' => __( 'Preparing publication synchronization…', 'nature-zotero-publications' ),
-			'syncErrorMessage'     => __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' ),
+			'restUrl'           => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'sourceSignature'   => Sync::source_signature( $query_args ),
+			'libraryType'       => $query_args['library_type'],
+			'libraryId'         => $query_args['library_id'],
+			'collection'        => $attributes['collection'],
+			'sortBy'            => $attributes['sortBy'],
+			'sortDirection'     => $attributes['sortDirection'],
+			'perPage'           => $per_page,
+			'showAbstract'      => (bool) $attributes['showAbstract'],
+			'page'              => 1,
+			'totalPages'        => $total_pages,
+			'totalItems'        => $total,
+			'search'            => '',
+			'filterType'        => '',
+			'filterYear'        => '',
+			'filterAuthor'      => '',
+			'authorQuery'       => '',
+			'authorSuggestions' => array(),
+			'authorOpen'        => false,
+			'activeAuthorIndex' => -1,
+			'items'             => array(),
+			'hasFetched'        => false,
+			'isLoading'         => false,
+			'isEmpty'           => false,
+			'message'           => __( 'No items match your filters.', 'nature-zotero-publications' ),
+			'noResultsMessage'  => __( 'No items match your filters.', 'nature-zotero-publications' ),
+			'errorMessage'      => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
+			'undatedLabel'      => __( 'Undated', 'nature-zotero-publications' ),
+			'inLabel'           => __( 'In:', 'nature-zotero-publications' ),
+			'pageLabel'         => __( 'Page', 'nature-zotero-publications' ),
+			'requestId'         => 0,
+			'authorRequestId'   => 0,
 		);
+		if ( $is_partial ) {
+			$context['syncProcessed']   = (int) $public_state['processed'];
+			$context['syncTotal']       = (int) $public_state['total'];
+			$context['syncProgressMax'] = max( 1, (int) $public_state['total'] );
+			$context['syncMessage']     = $sync_message;
+			/* translators: 1: processed publication count, 2: total publication count. */
+			$context['syncProgressTemplate'] = __( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'nature-zotero-publications' );
+			$context['syncPreparingMessage'] = __( 'Preparing publication synchronization…', 'nature-zotero-publications' );
+			$context['syncErrorMessage']     = __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' );
+		}
 
 		$wrapper_args = array(
 			'class'               => 'zotero-display-block' . ( $is_partial ? ' zotero-display-sync-status' : '' ),
