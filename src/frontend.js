@@ -179,8 +179,6 @@ store( 'zotero-display', {
 			} );
 
 			while ( true ) {
-				yield delay( 5000 );
-
 				try {
 					const response = yield fetch(
 						`${ context.restUrl }items?${ params.toString() }`
@@ -204,6 +202,8 @@ store( 'zotero-display', {
 				} catch {
 					// Keep the current progress visible and retry after the interval.
 				}
+
+				yield delay( 5000 );
 			}
 		},
 	},

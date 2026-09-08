@@ -143,11 +143,6 @@ class Block {
 		$sync_result    = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
 		$sync_state     = Sync::ensure_scheduled( $query_args );
 
-		if ( false === $sync_result && empty( $sync_state['processed'] ) ) {
-			$sync_state  = Sync::prime_first_batch( $query_args );
-			$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
-		}
-
 		if ( false !== $sync_result ) {
 			$first_page  = $sync_result['items'];
 			$total       = $sync_result['pagination']['total_items'];
