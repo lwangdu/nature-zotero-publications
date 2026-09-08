@@ -14,6 +14,25 @@ Repository guidance for AI coding agents working on **Nature Zotero Publications
 
 This plugin registers a dynamic Gutenberg block that displays Zotero user or group library data as a searchable, filterable bibliography. Zotero data is synchronized into plugin-owned local WordPress database tables, and frontend interactions use the WordPress Interactivity API.
 
+## Agent Workflow
+
+Use the WordPress AI Handbook's Agent Skills project as the canonical model for WordPress agent guidance: <https://make.wordpress.org/ai/handbook/projects/agent-skills/>.
+
+Keep this root `AGENTS.md` lean. Add only guidance that applies to nearly every task in this plugin; put longer, task-specific procedures in public docs, `README.md`, `readme.txt`, or a future `.agents/skills/<domain>/SKILL.md`.
+
+When WordPress Agent Skills are available in the coding environment, use the relevant skill before changing code:
+
+- `wordpress-router`: classify the project and pick the right WordPress workflow.
+- `wp-project-triage`: inspect tooling, WordPress/PHP targets, package scripts, and generated assets before editing.
+- `wp-plugin-development`: use for plugin architecture, hooks, settings, activation/deactivation, uninstall behavior, and admin UI changes.
+- `wp-block-development`: use for `block.json`, block attributes, editor controls, dynamic rendering, and saved-content compatibility.
+- `wp-interactivity-api`: use for frontend state, `data-wp-*` directives, async actions, and client-side behavior.
+- `wp-rest-api`: use for REST route schemas, request sanitization, permission callbacks, authentication, and response shape.
+- `wp-performance`: use for slow page loads, cache behavior, synchronization timing, database indexes, and request profiling.
+- `wp-plugin-directory-guidelines`: use before packaging, release-readiness reviews, or plugin-directory-style documentation changes.
+
+If a skill is not installed, follow the same workflow manually: triage first, read the closest existing implementation, make the smallest safe change, then verify with the commands in this file.
+
 ## Repository Structure
 
 ```text
@@ -103,18 +122,19 @@ When data storage or deletion behavior changes, update `README.md` and `readme.t
 
 Before committing or pushing:
 
-1. Inspect `git status --short` and understand the complete working-tree scope.
-2. Run the relevant syntax, lint, build, and PHPCS checks.
-3. If `src/` changes affect generated assets, run `npm run build` and include the matching `build/` changes.
-4. If release metadata changes, keep versions aligned in:
+1. Use `wordpress-router` and `wp-project-triage` if available, or manually confirm project type, tooling, and current versions.
+2. Inspect `git status --short` and understand the complete working-tree scope.
+3. Run the relevant syntax, lint, build, and PHPCS checks.
+4. If `src/` changes affect generated assets, run `npm run build` and include the matching `build/` changes.
+5. If release metadata changes, keep versions aligned in:
    - `nature-zotero-publications.php`
    - `package.json`
    - `package-lock.json`
    - `README.md`
    - `readme.txt`
-5. Update `Tested up to` only after running compatibility checks against that WordPress version.
-6. Review `git diff --check`.
-7. After push, report the commit hash, branch, remote, remote hash alignment, and clean-tree status.
+6. Update `Tested up to` only after running compatibility checks against that WordPress version.
+7. Review `git diff --check`.
+8. After push, report the commit hash, branch, remote, remote hash alignment, and clean-tree status.
 
 ## Ask Before
 
