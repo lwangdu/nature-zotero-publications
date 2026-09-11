@@ -34,21 +34,9 @@ Use this map to start in the right place:
 5. Check for uncommitted changes and avoid overwriting unrelated work.
 6. For WordPress-specific work, use the matching official WordPress Agent Skill when available; use this file for the project-specific details those general skills will not know.
 
-## PHP
+## Shared Rules
 
-- Follow the WordPress PHP Coding Standards.
-- Use tabs for indentation and WordPress spacing conventions.
-- Use one class per file and descriptive lowercase, hyphenated filenames such as `class-zotero-api.php`.
-- Keep classes namespaced under `Zotero_Display`.
-- Keep global functions, constants, hooks, options, transients, and REST routes consistently prefixed with `zotero_display` or `ZOTERO_DISPLAY`.
-- After the file docblock, protect directly accessed PHP files with `defined( 'ABSPATH' ) || exit;`.
-- Sanitize input with context-appropriate functions such as `sanitize_text_field()`, `sanitize_key()`, `absint()`, and `esc_url_raw()`.
-- Escape output with context-appropriate functions such as `esc_html()`, `esc_attr()`, `esc_url()`, and `wp_kses_post()`.
-- Use `$wpdb->prepare()` for dynamic SQL values.
-- Prefer WordPress APIs and existing helpers over direct database queries.
-- Check capabilities before administrative or user-specific actions.
-- Verify nonces for state-changing admin, AJAX, REST, and form actions.
-- Do not expose credentials, tokens, private data, or sensitive diagnostics in responses, markup, JavaScript, scheduled-event arguments, or logs.
+Follow [AGENTS.md](AGENTS.md) for coding standards, stable identifiers, PHP access guards (including the uninstall exception), generated assets, data ownership, development commands, release metadata, and approval requirements. Keep those rules in that file rather than duplicating them here.
 
 ## REST And External APIs
 
@@ -62,44 +50,15 @@ Use this map to start in the right place:
 - Cache responses only when the cache does not expose private data.
 - Do not expose arbitrary saved plugin settings through public REST. Public visitors may only query a source that was already rendered into block markup and signed by the server.
 
-## Blocks And JavaScript
+## Blocks, Internationalization, And Accessibility
 
-- Use `@wordpress/scripts`, because it is already part of this project.
-- Register the block through `src/block.json` and keep generated `build/block.json` in sync.
-- This is a dynamic block: `save` should return `null`, and frontend markup should come from PHP rendering.
-- Prefer the WordPress Interactivity API for frontend search, filters, pagination, sync polling, and client-side state.
-- Follow existing state-management, data-fetching, and component patterns.
-- Use buttons for actions and links for navigation.
-- Do not edit generated `build/` files manually. Change `src/` files and run `npm run build`.
-
-## Internationalization
-
-- All user-facing strings must be translatable.
-- Use the exact text domain `nature-zotero-publications`.
-- Use functions such as `__()`, `_e()`, `esc_html__()`, and `esc_attr__()`.
-- Use `wp_set_script_translations()` where appropriate.
-- Add translator comments when a string's context is unclear.
-- Keep PHP and JavaScript text domains consistent.
-
-## Accessibility
-
-- Review every block, admin screen, and frontend interaction for accessibility.
-- Ensure all interactive elements work with keyboard navigation.
-- Provide visible focus indicators.
-- Give every control an associated label or accessible name.
-- Use semantic headings, lists, landmarks, buttons, and links.
-- Announce dynamic result counts, loading states, and errors with appropriate status or live regions.
-- Do not rely on color alone to communicate meaning.
-- Check WCAG 2.1 AA contrast requirements for new UI.
-- Respect `prefers-reduced-motion`.
-- Test empty, loading, error, and no-permission states.
+- Trace changes through editor controls, PHP-rendered markup, Interactivity API context, and frontend actions. Update only the layers affected by the requested behavior.
+- Preserve initial server-rendered results while enhancing search, filters, author suggestions, and pagination.
+- For changed UI, verify labels, visible focus, keyboard operation, dynamic result/error announcements, and loading and empty states. Check author suggestion selection and focus after closing the list.
+- Keep PHP-rendered and JavaScript-rendered labels consistent and translatable; add translator comments for placeholders and ambiguous context.
 
 ## Data, Sync, And Cleanup
 
-- Treat `{$wpdb->prefix}zotero_display_items` and `{$wpdb->prefix}zotero_display_creators` as plugin-owned local index tables.
-- Do not drop persistent tables on deactivation.
-- Keep `uninstall.php` responsible for deleting plugin-owned tables, settings, schema/sync options, transients, supported object-cache group data, and scheduled sync events.
-- Document any changed storage or deletion behavior in `README.md` and `readme.txt`.
 - For performance work, trace the actual request, render, REST, sync, cache, and database path before changing cache strategy.
 - Keep first-page rendering fast when the local index already exists. Avoid making frontend page render wait on full Zotero synchronization.
 - Keep sync work resumable and bounded so cache-clearing a small library does not make the page appear stalled longer than necessary.
@@ -107,46 +66,27 @@ Use this map to start in the right place:
 ## Common Change Paths
 
 - **Slow page load:** inspect `includes/class-block.php`, `includes/class-rest-controller.php`, `includes/class-sync.php`, and `src/frontend.js`; measure both initial HTML response time and REST polling behavior before editing.
-- **Pagination or filters:** update block attributes/defaults, PHP query handling, REST args, frontend state, generated `build/`, and docs together.
+- **Pagination or filters:** trace block attributes/defaults, PHP queries, REST args, frontend state, generated `build/`, and docs; update the affected layers together while preserving existing public formats unless their change is authorized.
 - **Zotero data fields:** update API normalization, database schema/storage, renderer output, REST responses, editor preview if relevant, and docs.
 - **Storage lifecycle:** update activation/install, schema versioning, `uninstall.php`, README/readme storage notes, and manual verification steps.
 - **Public API security:** check source signatures, route args, permission callbacks, API-key handling, and response payloads together.
 
 ## Validation
 
-Run the project checks that match the files changed:
+Use the commands in [AGENTS.md](AGENTS.md#development-commands) that match the changed files, then run `git diff --check`. The repository currently has no configured test script; do not claim `npm test` passed. Use focused fixtures or manual checks for behavior that lint cannot verify, and describe their scope.
 
-```bash
-npm run lint:js
-npm run lint:css
-npm run build
-php -l nature-zotero-publications.php
-php -l uninstall.php
-php -l includes/class-block.php
-php -l includes/class-rest-controller.php
-php -l includes/class-settings.php
-php -l includes/class-sync.php
-php -l includes/class-zotero-api.php
-php /Users/lwangdu/Studio/stunt-ranch/wp-content/plugins/plugin-check/vendor/squizlabs/php_codesniffer/bin/phpcs --standard=WordPress-Core nature-zotero-publications.php includes/class-block.php includes/class-rest-controller.php includes/class-settings.php includes/class-sync.php includes/class-zotero-api.php uninstall.php
-git diff --check
-```
+### Focused Regression Checks
+
+Run the relevant cases when changing synchronization, polling, or compatibility:
+
+- **Polling:** failed HTTP responses, network failures, and pending sync responses wait five seconds before retrying. A ready response reloads once and stops polling; a sync error stops polling and displays its message. Use mocked fetch responses and timers so failure tests do not flood a real endpoint.
+- **Retry interval:** a failed initial sync and a failed refresh remain in the error state for `Sync::RETRY_DELAY` (currently 300 seconds). Verify a retry becomes eligible after the interval, and that new sources, fresh completed sources, stale completed sources, and in-progress syncs still follow their normal scheduling paths.
+- **Completed data:** refreshing or failing a refresh preserves the completed generation and its readable results until a successful replacement is available. Exercise failure paths with fixtures or a disposable site rather than clearing the user's index.
+- **WordPress compatibility:** verify imported Interactivity API exports and directives exist in the declared minimum WordPress version. Test the affected behavior on that version when available and distinguish source inspection from runtime validation. Keep `Tested up to` limited to versions actually checked; do not claim compatibility with untested future versions.
 
 Manually verify activation, editor registration, frontend rendering, responsive behavior, API success and failure states, caching, permissions, and backward compatibility when relevant.
 
 For performance-sensitive changes, also capture before/after timings for the affected page or REST endpoint. Record whether the measurement is local Studio runtime evidence or only static analysis.
-
-## Ask Before
-
-Ask for explicit approval before:
-
-- Changing the minimum WordPress or PHP version.
-- Adding an external service or dependency.
-- Adding an npm package that makes network requests.
-- Modifying `vendor/`, `node_modules/`, or generated files directly.
-- Changing public REST endpoints, block attributes, or stored content formats.
-- Removing features or backward compatibility.
-- Removing or weakening sanitization, escaping, nonce, capability, or permission checks.
-- Changing multiple version values at once. If plugin, block, and readme versions differ, report the mismatch instead of guessing.
 
 ## Completion Report
 

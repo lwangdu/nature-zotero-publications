@@ -6,8 +6,8 @@ Current version: **1.0.6**
 
 ## Requirements
 
-- WordPress 6.5 or newer
-- PHP 7.4 or newer
+- WordPress 7.0 or newer
+- PHP 8.3 or newer
 - A numeric Zotero user ID or group ID
 - A Zotero API key for private libraries; public libraries do not require one
 - Working WordPress Cron so large libraries can synchronize in background batches
@@ -36,6 +36,8 @@ Zotero limits an API response to 100 items. The plugin uses a resumable backgrou
 3. Normalized items and creators are stored in plugin-owned local index tables.
 4. A newly completed generation replaces the previous generation only after every batch succeeds.
 5. The completed index powers search, filters, entry counts, and pagination.
+
+The initial synchronization screen reloads as soon as its first indexed publications are available, then displays the partial index while background synchronization continues. Browser-triggered priming fetches at most one 100-item Zotero page; scheduled workers still process up to four pages per run. A single Zotero request can still take up to the configured 20-second HTTP timeout.
 
 Visitors continue to see the last completed generation while a refresh is running. During the first synchronization, the page displays already-indexed publications together with an accessible progress indicator and automatically reloads when the complete index is ready. Search, filters, pagination, and author suggestions work with the available partial index. Visitor page and REST requests never download a synchronous 2,000-item fallback.
 
@@ -176,6 +178,15 @@ Open **Settings → Nature Zotero Publications** and select **Clear Zotero Cache
 Compare against Zotero's top-level **items in this view** count. Child attachments and annotations are intentionally excluded, while standalone attachments are included.
 
 ## Changelog
+
+### Unreleased
+
+- Show first indexed publications before the full initial synchronization completes; limit browser-triggered priming to one 100-item page.
+
+- Require PHP 8.3 or newer.
+- Require WordPress 7.0 or newer.
+- Keep the five-second polling delay after failed HTTP responses.
+- Honor the five-minute retry interval after synchronization failures.
 
 ### 1.0.6
 

@@ -1,10 +1,10 @@
 === Nature Zotero Publications ===
 Contributors: lwangdu
 Tags: zotero, bibliography, citations, gutenberg, publications
-Requires at least: 6.5
+Requires at least: 7.0
 Tested up to: 7.1
 Stable tag: 1.0.6
-Requires PHP: 7.4
+Requires PHP: 8.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,6 +17,8 @@ Nature Zotero Publications displays live Zotero library data in a dynamic Gutenb
 The block includes search, year/type/author filters, entry counts, and pagination. Initial results are rendered on the server and progressively enhanced with the WordPress Interactivity API. Author suggestions are requested only after a visitor types at least two characters, avoiding a large inline author list.
 
 The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the local index. During the first synchronization, already-indexed publications and controls remain available alongside an accessible progress indicator.
+
+The initial synchronization screen reloads as soon as its first indexed publications are available, then displays the partial index while background synchronization continues. Browser-triggered priming fetches at most one 100-item Zotero page; scheduled workers still process up to four pages per run. A single Zotero request can still take up to the configured 20-second HTTP timeout.
 
 Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses. Public REST requests are limited to server-signed rendered block sources.
 
@@ -95,6 +97,15 @@ Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This c
 Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
 
 == Changelog ==
+
+= Unreleased =
+
+* Show first indexed publications before the full initial synchronization completes; limit browser-triggered priming to one 100-item page.
+
+* Require PHP 8.3 or newer.
+* Require WordPress 7.0 or newer.
+* Keep the five-second polling delay after failed HTTP responses.
+* Honor the five-minute retry interval after synchronization failures.
 
 = 1.0.6 =
 

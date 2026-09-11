@@ -444,6 +444,7 @@ class Block {
 		}
 
 		$context       = array(
+			'reloadOnFirstItems'   => true,
 			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
 			'sourceSignature'      => Sync::source_signature( $query_args ),
 			'libraryType'          => $query_args['library_type'],

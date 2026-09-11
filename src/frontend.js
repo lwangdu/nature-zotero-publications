@@ -184,11 +184,14 @@ store( 'zotero-display', {
 						`${ context.restUrl }items?${ params.toString() }`
 					);
 					if ( ! response.ok ) {
-						continue;
+						throw new Error( 'Request failed' );
 					}
 
 					const data = yield response.json();
-					if ( data.sync?.ready ) {
+					if (
+						data.sync?.ready ||
+						( context.reloadOnFirstItems && data.items?.length > 0 )
+					) {
 						window.location.reload();
 						return;
 					}

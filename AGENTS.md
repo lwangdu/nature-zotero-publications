@@ -7,8 +7,8 @@ Repository guidance for AI coding agents working on **Nature Zotero Publications
 - **Type:** WordPress plugin
 - **Slug:** `nature-zotero-publications`
 - **Author:** Lobsang Wangdu
-- **Minimum WordPress version:** 6.5
-- **Minimum PHP version:** 7.4
+- **Minimum WordPress version:** 7.0
+- **Minimum PHP version:** 8.3
 - **Text domain:** `nature-zotero-publications`
 - **Current version:** verify in `nature-zotero-publications.php`, `package.json`, and `readme.txt` before release work
 
@@ -18,7 +18,7 @@ This plugin registers a dynamic Gutenberg block that displays Zotero user or gro
 
 Use the WordPress AI Handbook's Agent Skills project as the canonical model for WordPress agent guidance: <https://make.wordpress.org/ai/handbook/projects/agent-skills/>.
 
-Keep this root `AGENTS.md` lean. Add only guidance that applies to nearly every task in this plugin; put longer, task-specific procedures in public docs, `README.md`, `readme.txt`, or a future `.agents/skills/<domain>/SKILL.md`.
+Keep this root `AGENTS.md` lean. Keep shared rules, commands, and approval requirements here; use [SKILL.md](SKILL.md) for the project map and task-specific validation workflows. Read the relevant workflow before changing code. Put administrator-facing procedures in `README.md` and `readme.txt`.
 
 When WordPress Agent Skills are available in the coding environment, use the relevant skill before changing code:
 
@@ -82,7 +82,9 @@ php -l includes/class-zotero-api.php
 
 - Follow the WordPress coding standards for PHP, JavaScript, CSS, HTML, inline documentation, and accessibility.
 - Keep classes namespaced under `Zotero_Display`.
-- Keep global functions, constants, hooks, options, transients, and REST routes consistently prefixed with `zotero_display` or `ZOTERO_DISPLAY`.
+- Use `zotero_display` or `ZOTERO_DISPLAY` for new global PHP identifiers and preserve existing hook, option, and transient names.
+- Preserve the established REST namespace `zotero-display/v1`, block name `zotero-display/library`, and Interactivity API store `zotero-display`; their hyphenated names are intentional.
+- Guard executable plugin PHP files with `defined( 'ABSPATH' ) || exit;` after any namespace declaration. For `uninstall.php`, retain `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;` instead; an `ABSPATH` check alone does not authorize uninstall cleanup.
 - Keep the plugin directory, main plugin file, text domain, block metadata textdomain, and package/readme slugs aligned to `nature-zotero-publications`.
 - Keep user-facing source strings in English and translatable with text domain `nature-zotero-publications`.
 - Sanitize all request, REST, block attribute, and admin inputs as close to the boundary as possible.
@@ -126,7 +128,7 @@ Before committing or pushing:
 2. Inspect `git status --short` and understand the complete working-tree scope.
 3. Run the relevant syntax, lint, build, and PHPCS checks.
 4. If `src/` changes affect generated assets, run `npm run build` and include the matching `build/` changes.
-5. If release metadata changes, keep versions aligned in:
+5. For an authorized version bump, update release metadata together in the files below. Report unexplained mismatches rather than guessing the intended version; historical changelog entries and block `apiVersion` are not plugin release versions.
    - `nature-zotero-publications.php`
    - `package.json`
    - `package-lock.json`
@@ -138,12 +140,15 @@ Before committing or pushing:
 
 ## Ask Before
 
-Ask for explicit approval before:
+Ask for explicit approval before the actions below unless the user has already authorized that action in the current task. Routine builds and package-manager operations within authorized work do not require separate approval; continue to obey environment permission requirements.
 
 - changing minimum WordPress or PHP requirements
-- changing public REST response formats
+- changing public REST endpoints or response formats
 - changing public block attributes or stored content formats
 - adding external dependencies or services
-- removing backward compatibility
+- removing features or backward compatibility
+- removing code believed to be unused
+- removing or weakening sanitization, escaping, nonce, capability, or permission checks
+- manually modifying `vendor/` or `node_modules/`; generated `build/` files must be regenerated from source
 - publishing or tagging a release
 - deleting user-created WordPress content

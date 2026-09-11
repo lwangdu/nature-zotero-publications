@@ -120,6 +120,10 @@ class Sync {
 		$stale      = empty( $state['last_sync'] ) || ( $now - (int) $state['last_sync'] ) >= $ttl;
 		$retry      = 'error' === $state['status'] && ( $now - (int) $state['updated_at'] ) >= self::RETRY_DELAY;
 
+		if ( 'error' === $state['status'] && ! $retry ) {
+			return $state;
+		}
+
 		if ( empty( $state['source_args'] ) || ( $stale && 'syncing' !== $state['status'] ) || $retry ) {
 			$state = self::start_sync( $source_key, $args, ! empty( $state['ready'] ) );
 		}
@@ -147,7 +151,8 @@ class Sync {
 		$state      = self::ensure_scheduled( $args );
 
 		if ( 'syncing' === $state['status'] && empty( $state['processed'] ) ) {
-			self::run_batch( $source_key );
+			// The browser only needs the first indexed page; leave the rest to cron.
+			self::run_batch( $source_key, 1 );
 			$state = self::get_state( $source_key );
 		}
 
@@ -158,9 +163,10 @@ class Sync {
 	 * Run a bounded number of Zotero pages for one source.
 	 *
 	 * @param string $source_key Source identifier.
+	 * @param int    $max_pages  Maximum pages for this run, bounded by PAGES_PER_RUN.
 	 * @return void
 	 */
-	public static function run_batch( $source_key ) {
+	public static function run_batch( $source_key, $max_pages = self::PAGES_PER_RUN ) {
 		$source_key = sanitize_key( $source_key );
 		$lock_key   = 'zotero_sync_lock_' . $source_key;
 
@@ -184,7 +190,8 @@ class Sync {
 		$completed             = false;
 		$batch_started         = microtime( true );
 
-		for ( $page_number = 0; $page_number < self::PAGES_PER_RUN; ++$page_number ) {
+		$max_pages = min( self::PAGES_PER_RUN, max( 1, (int) $max_pages ) );
+		for ( $page_number = 0; $page_number < $max_pages; ++$page_number ) {
 			$page = Zotero_API::fetch_page( $args, (int) $state['next_start'], self::PAGE_SIZE );
 			if ( is_wp_error( $page ) ) {
 				$state['status']     = 'error';
