@@ -100,6 +100,10 @@ Make sure User Library or Group Library matches the numeric ID. Private user or 
 
 = Unreleased =
 
+* Preserve case-sensitive Zotero sorting values such as dateAdded.
+* Load editor previews when using the plugin-wide default library.
+* Support arrow navigation and Escape dismissal in author suggestions, restoring input focus on dismissal or keyboard selection.
+
 * Show first indexed publications before the full initial synchronization completes; limit browser-triggered priming to one 100-item page.
 
 * Require PHP 8.3 or newer.

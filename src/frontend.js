@@ -336,16 +336,47 @@ store( 'zotero-display', {
 			yield* requestItems( context );
 		},
 		selectAuthorKeydown: withSyncEvent( function* ( event ) {
+			const context = getContext();
+			const root = event.currentTarget.closest(
+				'[data-wp-interactive="zotero-display"]'
+			);
+			const input = root?.querySelector( 'input[role="combobox"]' );
+
+			if ( event.key === 'Escape' ) {
+				event.preventDefault();
+				context.authorOpen = false;
+				++context.authorRequestId;
+				input?.focus();
+				return;
+			}
+
+			if ( event.key === 'ArrowDown' || event.key === 'ArrowUp' ) {
+				event.preventDefault();
+				const options = Array.from(
+					root.querySelectorAll(
+						'.zotero-author-results [role="option"]'
+					)
+				);
+				const index = options.indexOf( event.currentTarget );
+				const next = index + ( event.key === 'ArrowDown' ? 1 : -1 );
+				if ( next < 0 ) {
+					input?.focus();
+				} else {
+					options[ Math.min( next, options.length - 1 ) ]?.focus();
+				}
+				return;
+			}
+
 			if ( event.key !== 'Enter' && event.key !== ' ' ) {
 				return;
 			}
 
 			event.preventDefault();
-			const context = getContext();
 			context.filterAuthor = context.author.value;
 			context.authorQuery = context.author.value;
 			context.authorOpen = false;
 			context.page = 1;
+			input?.focus();
 			yield* requestItems( context );
 		} ),
 		*previousPage() {

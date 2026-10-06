@@ -71,7 +71,7 @@ class REST_Controller {
 					),
 					'sort'             => array(
 						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_key',
+						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'direction'        => array(
 						'type'              => 'string',
@@ -140,7 +140,7 @@ class REST_Controller {
 					),
 					'sort'             => array(
 						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_key',
+						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'direction'        => array(
 						'type'              => 'string',

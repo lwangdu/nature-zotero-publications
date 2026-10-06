@@ -726,7 +726,7 @@ class Sync {
 			'library_type'  => ( isset( $args['library_type'] ) && 'group' === $args['library_type'] ) ? 'group' : 'user',
 			'library_id'    => isset( $args['library_id'] ) ? sanitize_text_field( $args['library_id'] ) : '',
 			'collection'    => isset( $args['collection'] ) ? sanitize_text_field( $args['collection'] ) : '',
-			'sort'          => isset( $args['sort'] ) ? sanitize_key( $args['sort'] ) : 'date',
+			'sort'          => isset( $args['sort'] ) ? sanitize_text_field( $args['sort'] ) : 'date',
 			'direction'     => isset( $args['direction'] ) && 'asc' === $args['direction'] ? 'asc' : 'desc',
 			'item_type'     => isset( $args['item_type'] ) ? sanitize_text_field( $args['item_type'] ) : '',
 			'cache_minutes' => isset( $args['cache_minutes'] ) ? max( 1, absint( $args['cache_minutes'] ) ) : 60,

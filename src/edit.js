@@ -137,11 +137,6 @@ export default function Edit( { attributes, setAttributes } ) {
 	const [ error, setError ] = useState( null );
 
 	const fetchPreview = useCallback( () => {
-		if ( ! libraryId ) {
-			setData( null );
-			setError( null );
-			return;
-		}
 		setIsLoading( true );
 		setError( null );
 

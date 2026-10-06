@@ -5,11 +5,17 @@ Repository guidance for AI coding agents working on **Nature Zotero Publications
 ## Project Overview
 
 - **Type:** WordPress plugin
+
 - **Slug:** `nature-zotero-publications`
+
 - **Author:** Lobsang Wangdu
+
 - **Minimum WordPress version:** 7.0
+
 - **Minimum PHP version:** 8.3
+
 - **Text domain:** `nature-zotero-publications`
+
 - **Current version:** verify in `nature-zotero-publications.php`, `package.json`, and `readme.txt` before release work
 
 This plugin registers a dynamic Gutenberg block that displays Zotero user or group library data as a searchable, filterable bibliography. Zotero data is synchronized into plugin-owned local WordPress database tables, and frontend interactions use the WordPress Interactivity API.
@@ -18,17 +24,24 @@ This plugin registers a dynamic Gutenberg block that displays Zotero user or gro
 
 Use the WordPress AI Handbook's Agent Skills project as the canonical model for WordPress agent guidance: <https://make.wordpress.org/ai/handbook/projects/agent-skills/>.
 
-Keep this root `AGENTS.md` lean. Keep shared rules, commands, and approval requirements here; use [SKILL.md](SKILL.md) for the project map and task-specific validation workflows. Read the relevant workflow before changing code. Put administrator-facing procedures in `README.md` and `readme.txt`.
+Keep this root `AGENTS.md` lean. Keep shared rules, commands, and approval requirements here; use `.agents/skills/wordpress-block-theme/SKILL.md` for the related block-theme workflow when installed, and other installed project skills for task-specific validation. Do not assume a skill file exists; inspect it first. Read the relevant workflow before changing code. Put administrator-facing procedures in `README.md` and `readme.txt`.
 
 When WordPress Agent Skills are available in the coding environment, use the relevant skill before changing code:
 
 - `wordpress-router`: classify the project and pick the right WordPress workflow.
+
 - `wp-project-triage`: inspect tooling, WordPress/PHP targets, package scripts, and generated assets before editing.
+
 - `wp-plugin-development`: use for plugin architecture, hooks, settings, activation/deactivation, uninstall behavior, and admin UI changes.
+
 - `wp-block-development`: use for `block.json`, block attributes, editor controls, dynamic rendering, and saved-content compatibility.
+
 - `wp-interactivity-api`: use for frontend state, `data-wp-*` directives, async actions, and client-side behavior.
+
 - `wp-rest-api`: use for REST route schemas, request sanitization, permission callbacks, authentication, and response shape.
+
 - `wp-performance`: use for slow page loads, cache behavior, synchronization timing, database indexes, and request profiling.
+
 - `wp-plugin-directory-guidelines`: use before packaging, release-readiness reviews, or plugin-directory-style documentation changes.
 
 If a skill is not installed, follow the same workflow manually: triage first, read the closest existing implementation, make the smallest safe change, then verify with the commands in this file.
@@ -49,10 +62,10 @@ uninstall.php                   Plugin-owned data cleanup on deletion
 
 ## Development Commands
 
-Use commands that exist in this repository:
+Inspect `package.json` and the lockfile before running commands. These commands are documented for this project; verify availability in the checkout. Use `npm ci` for a consistent install when package-lock.json is present and in sync; use `npm install` when intentionally updating dependencies. `npm run format` writes files, so review its scope and avoid unrelated formatting changes:
 
 ```bash
-npm install
+npm ci
 npm run build
 npm run lint:js
 npm run lint:css
@@ -60,7 +73,7 @@ npm run format
 npm run plugin-zip
 ```
 
-There is no `composer.json` in this plugin. For WordPress PHPCS checks, use the available local Plugin Check PHPCS wrapper when present:
+There is no `composer.json` in this plugin. For WordPress PHPCS checks, use the configured project or environment executable. The following author-local path is an example only; verify it exists before using it, and do not assume it is available on another machine:
 
 ```bash
 php /Users/lwangdu/Studio/stunt-ranch/wp-content/plugins/plugin-check/vendor/squizlabs/php_codesniffer/bin/phpcs --standard=WordPress-Core nature-zotero-publications.php includes/class-block.php includes/class-rest-controller.php includes/class-settings.php includes/class-sync.php includes/class-zotero-api.php uninstall.php
@@ -81,37 +94,81 @@ php -l includes/class-zotero-api.php
 ## Coding Standards
 
 - Follow the WordPress coding standards for PHP, JavaScript, CSS, HTML, inline documentation, and accessibility.
+
 - Keep classes namespaced under `Zotero_Display`.
+
 - Use `zotero_display` or `ZOTERO_DISPLAY` for new global PHP identifiers and preserve existing hook, option, and transient names.
+
 - Preserve the established REST namespace `zotero-display/v1`, block name `zotero-display/library`, and Interactivity API store `zotero-display`; their hyphenated names are intentional.
+
 - Guard executable plugin PHP files with `defined( 'ABSPATH' ) || exit;` after any namespace declaration. For `uninstall.php`, retain `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;` instead; an `ABSPATH` check alone does not authorize uninstall cleanup.
+
 - Keep the plugin directory, main plugin file, text domain, block metadata textdomain, and package/readme slugs aligned to `nature-zotero-publications`.
+
 - Keep user-facing source strings in English and translatable with text domain `nature-zotero-publications`.
+
 - Sanitize all request, REST, block attribute, and admin inputs as close to the boundary as possible.
+
 - Escape all output at render time.
-- Check capabilities before admin-only actions and verify nonces for admin form actions.
+
+- Check object-appropriate capabilities before privileged actions. Verify action-specific nonces for browser-originated state changes, including admin forms and AJAX. Nonces do not replace authentication or authorization. Use WordPress REST nonce handling for cookie authentication; use the appropriate authentication for other REST clients, cron, and WP-CLI entry points.
+
 - Use `$wpdb->prepare()` for dynamic SQL values and document unavoidable direct DB queries with targeted PHPCS ignores.
+
 - Do not expose Zotero API keys in markup, JavaScript, REST responses, scheduled-event arguments, logs, or errors.
+
 - Public REST routes must keep explicit permission callbacks and source-signature validation where applicable.
+
 - Keep pagination and API request sizes bounded.
+
 - Keep the Plugins screen Settings action link wired to `options-general.php?page=nature-zotero-publications`.
+
 - Do not introduce new third-party dependencies unless the benefit is clear and the release/package impact is documented.
 
-## Gutenberg And Frontend Rules
+## Block Registration and Saved Content
 
-- Register the block through `src/block.json`; run `npm run build` after changing source metadata.
-- This is a dynamic block. `save` returns `null`; frontend markup is rendered in `includes/class-block.php`.
-- Use the WordPress Interactivity API for frontend search, filters, pagination, sync polling, and client-side state.
-- Keep user-facing strings translatable with text domain `nature-zotero-publications`.
-- Preserve keyboard and screen-reader support for search, filters, pagination, loading/progress states, and author autocomplete.
-- Keep generated markup semantic and valid. Use labels, headings, status regions, and ARIA only where they improve accessibility.
-- Keep CSS scoped to the plugin/block classes and avoid broad selectors that can affect the active theme or other plugins.
+- Treat `src/block.json` as the source of truth for the block name, attribute schema, supports, text domain, and asset metadata. Register the block on the server using the built metadata through the existing bootstrap. Rebuild after source or metadata changes.
+- Preserve `zotero-display/library`, its attribute names, types, defaults, and existing stored-content behavior. Block `apiVersion` is independent of the plugin release version; do not bump it as release housekeeping.
+- This block is dynamic: `save` returns `null`, and `includes/class-block.php` renders the frontend. Keep that architecture. Do not introduce a second renderer or convert to static saved HTML without an authorized compatibility plan.
+- Validate and normalize attributes again in PHP; editor controls and metadata alone are not a security boundary. Handle missing attributes in older saved blocks.
+- Never store API keys, authorization tokens, or private source data in block attributes, post content, examples, or patterns.
+- Use `useBlockProps()` for the editor wrapper and `get_block_wrapper_attributes()` for the PHP wrapper, integrating custom attributes correctly. Preserve generated classes and supported styles; do not escape the assembled wrapper-attribute string as one HTML value.
+- Do not add attribute `source` selectors that depend on saved frontend HTML to this `save: null` block. If InnerBlocks is introduced, design persistence explicitly; `save: null` alone does not serialize its content.
+- For authorized saved-content changes, define migration or deprecation behavior as appropriate and verify existing saved blocks still open, save, and render correctly. Dynamic rendering does not make attribute changes automatically backward-compatible.
+
+## Block Theme and Site Editor Compatibility
+
+- Keep the bibliography block, REST routes, synchronization, and data storage in the plugin. Do not move them into the active theme.
+- When a task also edits a companion block theme, put layout templates in `templates/*.html` and parts in `parts/*.html`, using valid Gutenberg comments. Do not introduce classic PHP layout templates or embed PHP in those HTML files.
+- The HTML-template rule does not prohibit this plugin's PHP dynamic renderer or supporting theme PHP hooks.
+- In a companion theme, define design presets and shared styles in `theme.json`. Use preset attributes and classes in templates instead of hardcoded hex colors or manually authored inline styles.
+- In this plugin, inherit theme typography and colors where practical. Use scoped block CSS and CSS custom properties with accessible fallbacks. Do not require theme-specific preset slugs or modify the active theme's theme.json to make the plugin work.
+- Preserve WordPress-generated block-support styles, including generated inline styles. Do not strip them under a general prohibition on manually authored inline styles.
+- Enable only block supports the renderer handles correctly. Verify spacing, color, typography, and wide/full alignment when those controls are exposed.
+- Scope CSS to the plugin/block wrapper. Avoid global element selectors, unnecessary `!important`, and assumptions about a particular theme's page width.
+- Verify editor styles in the iframe-based editor where available, as well as frontend styles. Use metadata asset fields for their intended editor/shared/frontend scope and avoid duplicate enqueueing.
+- For patterns or template examples containing the block, use its registered name and valid JSON attributes; never paste its rendered bibliography into saved markup as a replacement for the dynamic block.
+- If a theme template edit does not appear, check for a saved Site Editor override before changing more code. Do not reset user customizations without authorization.
+
+## Interactivity and Accessibility
+
+- Use the WordPress Interactivity API for frontend search, filters, pagination, sync polling, and client-side state. Preserve the `zotero-display` store namespace and existing initialization architecture.
+- Keep block-specific state in per-instance context when appropriate. Two bibliography blocks on one page must not unintentionally share filters, pagination, loading state, or control IDs.
+- Use supported `data-wp-*` directives and async action patterns for the target WordPress version. Consult the relevant API documentation before changing async context-sensitive behavior.
+- Register frontend modules using the project's metadata/build pipeline. Do not bundle a duplicate copy of WordPress runtime packages or add another frontend framework for ordinary interactions.
+- Treat all client-visible state and context as public. Keep secrets and privileged operations on the server.
+- Handle loading, empty, error, and retry states. Prevent stale search responses from overwriting newer results; bound and stop polling when its purpose is complete.
+- Keep initial server-rendered content useful if JavaScript fails. Do not present nonfunctional controls as available actions without a fallback or clear explanation.
+- Use English source strings with the `nature-zotero-publications` text domain. Translate PHP and JavaScript interface strings using the corresponding WordPress APIs.
+- Preserve keyboard and screen-reader support for search, filters, pagination, progress states, and author autocomplete. Use visible labels, logical headings, visible focus, and meaningful status announcements.
+- Avoid duplicate IDs, unexpected focus moves, and excessive live-region announcements. Ensure controls remain usable at narrow widths and with zoom.
 
 ## Data And Cleanup
 
 The plugin stores synchronized Zotero data in plugin-owned local tables:
 
 - `{$wpdb->prefix}zotero_display_items`
+
 - `{$wpdb->prefix}zotero_display_creators`
 
 Settings and synchronization state are stored in WordPress options/transients. `uninstall.php` must remove plugin-owned tables, settings, schema/sync options, transients, supported object-cache group data, and scheduled sync events. Deactivation should not drop persistent tables.
@@ -120,22 +177,55 @@ The custom tables are intentional because the plugin needs a local, searchable Z
 
 When data storage or deletion behavior changes, update `README.md` and `readme.txt` so administrators understand what is stored and what is removed on uninstall.
 
+## Task Validation
+
+Run checks relevant to the changed behavior, using actual repository tooling. Do not report a check as passed unless it ran successfully.
+
+- Metadata/build changes: parse changed JSON; verify referenced built files exist; run the relevant build and lint commands. Review generated diffs and include committed build assets.
+- PHP changes: run syntax checks on changed files and the available WordPress coding-standard checks. Use targeted PHPCS exceptions only with an explanation; never blanket-disable security rules.
+- Block/editor changes: insert, configure, save, reload, duplicate, and render the block. Check older saved content for invalid-block or attribute compatibility issues.
+- Frontend changes: test search, filters, pagination, autocomplete, empty results, API failures, and loading/progress behavior. Check two independently configured blocks on the same page.
+- Theme integration changes: check the Post Editor and Site Editor where applicable, the frontend under a block theme, exposed style controls, keyboard navigation, and responsive layout.
+- REST/security changes: check authorized success and relevant failures, including invalid input, insufficient capabilities, and missing/invalid nonces for cookie-authenticated state changes. Confirm secrets do not appear in responses or markup.
+- Sync/storage changes: verify bounded requests, cache invalidation, scheduled-event handling, and safe recovery from interruption. Rendering must not trigger an unbounded remote library sync.
+- If a WordPress runtime, Zotero test source, or required tool is unavailable, report the specific unperformed check and remaining uncertainty.
+
+## Code Delivery
+
+- Give each supplied code block its destination path and provide complete files or complete self-contained functions/classes. Do not use omitted-code placeholders.
+- Use `html` fences for HTML block templates and `php` fences for the dynamic PHP renderer.
+- Present replacements for theme.json, block.json, or package.json as complete valid JSON objects, retaining unrelated existing settings. Do not include comments or trailing commas in JSON.
+- Keep implementation instructions in developer documentation and operational setup/cleanup instructions in administrator documentation.
+- Report changed behavior, verification results, and material limits concisely.
+
 ## Release Workflow
 
 Before committing or pushing:
 
 1. Use `wordpress-router` and `wp-project-triage` if available, or manually confirm project type, tooling, and current versions.
+
 2. Inspect `git status --short` and understand the complete working-tree scope.
+
 3. Run the relevant syntax, lint, build, and PHPCS checks.
+
 4. If `src/` changes affect generated assets, run `npm run build` and include the matching `build/` changes.
+
 5. For an authorized version bump, update release metadata together in the files below. Report unexplained mismatches rather than guessing the intended version; historical changelog entries and block `apiVersion` are not plugin release versions.
+
    - `nature-zotero-publications.php`
+
    - `package.json`
+
    - `package-lock.json`
+
    - `README.md`
+
    - `readme.txt`
+
 6. Update `Tested up to` only after running compatibility checks against that WordPress version.
+
 7. Review `git diff --check`.
+
 8. After push, report the commit hash, branch, remote, remote hash alignment, and clean-tree status.
 
 ## Ask Before
@@ -143,12 +233,30 @@ Before committing or pushing:
 Ask for explicit approval before the actions below unless the user has already authorized that action in the current task. Routine builds and package-manager operations within authorized work do not require separate approval; continue to obey environment permission requirements.
 
 - changing minimum WordPress or PHP requirements
+
 - changing public REST endpoints or response formats
+
 - changing public block attributes or stored content formats
+
 - adding external dependencies or services
+
 - removing features or backward compatibility
+
 - removing code believed to be unused
+
 - removing or weakening sanitization, escaping, nonce, capability, or permission checks
+
 - manually modifying `vendor/` or `node_modules/`; generated `build/` files must be regenerated from source
+
 - publishing or tagging a release
+
 - deleting user-created WordPress content
+
+## WordPress References
+
+Consult the relevant official reference when changing API behavior; verify compatibility with the project's declared minimum versions.
+
+- Agent skills: https://make.wordpress.org/ai/handbook/projects/agent-skills/
+- Block metadata: https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata/
+- Interactivity API: https://developer.wordpress.org/block-editor/reference-guides/packages/packages-interactivity/
+- Nonces and authorization: https://developer.wordpress.org/apis/security/nonces/

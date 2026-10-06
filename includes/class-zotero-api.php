@@ -35,7 +35,7 @@ class Zotero_API {
 		$query = array(
 			'format'    => 'json',
 			'include'   => 'data',
-			'sort'      => sanitize_key( $args['sort'] ),
+			'sort'      => sanitize_text_field( $args['sort'] ),
 			'direction' => ( 'asc' === $args['direction'] ) ? 'asc' : 'desc',
 			'limit'     => min( 100, max( 1, (int) $limit ) ),
 			'start'     => max( 0, (int) $start ),
