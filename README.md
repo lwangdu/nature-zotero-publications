@@ -2,7 +2,7 @@
 
 Nature Zotero Publications is a dynamic WordPress block that displays a complete Zotero user or group library as a searchable, filterable bibliography.
 
-Current version: **1.0.6**
+Current version: **1.0.7**
 
 ## Requirements
 
@@ -179,7 +179,7 @@ Compare against Zotero's top-level **items in this view** count. Child attachmen
 
 ## Changelog
 
-### Unreleased
+### 1.0.7
 
 - Preserve case-sensitive Zotero sorting values such as `dateAdded`.
 - Load editor previews when using the plugin-wide default library.
