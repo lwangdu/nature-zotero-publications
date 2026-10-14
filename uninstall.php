@@ -21,6 +21,10 @@ function zotero_display_uninstall_site() {
 	delete_option( 'zotero_display_schema_version' );
 	delete_option( 'zotero_display_fragment_cache_keys' );
 
+	foreach ( array( 'zotero_sync_lock_', '_transient_zotero_sync_lock_', '_transient_timeout_zotero_sync_lock_' ) as $prefix ) {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Remove only plugin-owned current and legacy locks.
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( $prefix ) . '%' ) );
+	}
 	$sync_like = $wpdb->esc_like( 'zotero_display_sync_' ) . '%';
 	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $sync_like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- WordPress has no delete-options-by-prefix API.
 

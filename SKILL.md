@@ -202,8 +202,9 @@ linting, and builds cannot establish.
 
 The documented behavior is:
 
-- Failed HTTP requests, network failures, and pending-sync responses
-  wait five seconds before retrying.
+- Pending-sync responses wait five seconds before retrying.
+- Failed HTTP/network requests back off exponentially, up to 60 seconds.
+- Hidden tabs make no polling requests and check visibility every 30 seconds.
 - A ready response reloads once and stops polling.
 - A sync error stops polling and displays its message.
 

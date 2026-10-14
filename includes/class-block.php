@@ -18,7 +18,7 @@ class Block {
 	const FRAGMENT_CACHE_PREFIX = 'zotero_display_fragment_';
 
 	/** Increment when cached block markup changes. */
-	const FRAGMENT_CACHE_VERSION = 3;
+	const FRAGMENT_CACHE_VERSION = 4;
 
 	/** Option containing fragment-cache transient keys for explicit invalidation. */
 	const FRAGMENT_CACHE_KEYS_OPTION = 'zotero_display_fragment_cache_keys';
@@ -141,7 +141,10 @@ class Block {
 
 		$per_page           = max( 1, (int) $attributes['itemsPerPage'] );
 		$fragment_cache_key = self::fragment_cache_key( $query_args, $attributes, 1 );
-		$cached_fragment    = get_transient( $fragment_cache_key );
+		if ( ! is_admin() && ! wp_is_rest_endpoint() ) {
+			Sync::ensure_scheduled( $query_args );
+		}
+		$cached_fragment = get_transient( $fragment_cache_key );
 		if ( false !== $cached_fragment && is_string( $cached_fragment ) ) {
 			return self::personalize_fragment( $cached_fragment );
 		}
@@ -229,11 +232,11 @@ class Block {
 			'class'               => 'zotero-display-block' . ( $is_partial ? ' zotero-display-sync-status' : '' ),
 			'data-zotero-display' => 'true',
 			'data-library-type'   => $query_args['library_type'],
-			'data-library-id'     => esc_attr( $query_args['library_id'] ),
-			'data-collection'     => esc_attr( $attributes['collection'] ),
-			'data-sort-by'        => esc_attr( $attributes['sortBy'] ),
-			'data-sort-direction' => esc_attr( $attributes['sortDirection'] ),
-			'data-items-per-page' => esc_attr( $per_page ),
+			'data-library-id'     => $query_args['library_id'],
+			'data-collection'     => $attributes['collection'],
+			'data-sort-by'        => $attributes['sortBy'],
+			'data-sort-direction' => $attributes['sortDirection'],
+			'data-items-per-page' => $per_page,
 			'data-show-stats'     => $attributes['showStats'] ? '1' : '0',
 			'data-show-filters'   => $attributes['showFilters'] ? '1' : '0',
 			'data-show-search'    => $attributes['showSearch'] ? '1' : '0',
@@ -285,7 +288,7 @@ class Block {
 								<input id="<?php echo esc_attr( $author_input_id ); ?>" type="search" class="zotero-display-filter" placeholder="<?php esc_attr_e( 'Search authors…', 'nature-zotero-publications' ); ?>" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="<?php echo esc_attr( $author_results_id ); ?>" data-wp-bind--aria-expanded="context.authorOpen" data-wp-bind--value="context.authorQuery" data-wp-on--input="actions.searchAuthors" data-wp-on--keydown="actions.authorKeydown" />
 								<ul id="<?php echo esc_attr( $author_results_id ); ?>" class="zotero-author-results" role="listbox" data-wp-bind--hidden="!context.authorOpen">
 									<template data-wp-each--author="context.authorSuggestions" data-wp-each-key="context.author.value">
-										<li><button type="button" role="option" data-wp-on--click="actions.selectAuthor" data-wp-on--keydown="actions.selectAuthorKeydown"><span data-wp-text="context.author.value"></span> <span aria-hidden="true">(<span data-wp-text="context.author.count"></span>)</span></button></li>
+										<li role="presentation"><button type="button" role="option" data-wp-on--click="actions.selectAuthor" data-wp-on--keydown="actions.selectAuthorKeydown"><span data-wp-text="context.author.value"></span> <span aria-hidden="true">(<span data-wp-text="context.author.count"></span>)</span></button></li>
 									</template>
 								</ul>
 							</div>
@@ -305,7 +308,7 @@ class Block {
 				<?php endforeach; ?>
 			</div>
 
-			<div class="zotero-publication-list" data-wp-bind--aria-busy="context.isLoading" data-wp-bind--hidden="!context.hasFetched">
+			<div class="zotero-publication-list" data-zotero-results tabindex="-1" data-wp-bind--aria-busy="context.isLoading" data-wp-bind--hidden="!context.hasFetched">
 				<template data-wp-each--item="context.items" data-wp-each-key="context.item.key">
 					<div>
 						<h2 class="zotero-year-heading" data-wp-bind--hidden="!context.item.showYearHeading" data-wp-text="context.item.yearLabel"></h2>
@@ -394,7 +397,9 @@ class Block {
 	private static function fragment_cache_ttl( array $query_args ) {
 		$cache_minutes = isset( $query_args['cache_minutes'] ) ? (int) $query_args['cache_minutes'] : 60;
 
-		return max( MINUTE_IN_SECONDS, $cache_minutes * MINUTE_IN_SECONDS );
+		$state     = Sync::get_public_state( $query_args );
+		$remaining = (int) $state['last_sync'] + $cache_minutes * MINUTE_IN_SECONDS - time();
+		return max( 1, min( 300, $remaining ) );
 	}
 
 	/**

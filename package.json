@@ -13,9 +13,7 @@
 		"packages-update": "wp-scripts packages-update"
 	},
 	"devDependencies": {
-		"@wordpress/scripts": "^30.0.0"
-	},
-	"dependencies": {
+		"@wordpress/scripts": "^30.0.0",
 		"@wordpress/interactivity": "^6.54.0"
 	}
 }

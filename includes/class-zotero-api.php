@@ -25,6 +25,14 @@ class Zotero_API {
 	 * @return array|\WP_Error Page data or an error.
 	 */
 	public static function fetch_page( array $args, $start = 0, $limit = 100 ) {
+		$valid = Sync::validate_source_args( $args );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+		$retry_at = (int) get_transient( 'zotero_display_backoff' );
+		if ( $retry_at > time() ) {
+			return new \WP_Error( 'zotero_backoff', __( 'Waiting before retrying Zotero.', 'nature-zotero-publications' ), array( 'retry_after' => $retry_at - time() ) );
+		}
 		$library_segment = ( 'group' === $args['library_type'] ) ? 'groups' : 'users';
 		$path            = sprintf( '/%s/%s/items/top', $library_segment, rawurlencode( $args['library_id'] ) );
 
@@ -55,12 +63,32 @@ class Zotero_API {
 			$request_args['headers']['Authorization'] = 'Bearer ' . $args['api_key'];
 		}
 
+		if ( ! empty( $args['conditional_version'] ) && 0 === (int) $start ) {
+			$request_args['headers']['If-Modified-Since-Version'] = (int) $args['conditional_version'];
+		}
 		$response = wp_remote_get( add_query_arg( $query, self::API_BASE . $path ), $request_args );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
+		$code    = wp_remote_retrieve_response_code( $response );
+		$backoff = max( 0, (int) wp_remote_retrieve_header( $response, 'backoff' ) );
+		$retry   = wp_remote_retrieve_header( $response, 'retry-after' );
+		$retry   = is_numeric( $retry ) ? (int) $retry : max( 0, (int) strtotime( (string) $retry ) - time() );
+		$backoff = max( $backoff, $retry );
+		if ( 429 === $code && ! $backoff ) {
+			$attempts = min( 8, 1 + (int) get_transient( 'zotero_display_backoff_attempts' ) );
+			set_transient( 'zotero_display_backoff_attempts', $attempts, HOUR_IN_SECONDS );
+			$backoff = 5 * ( 2 ** $attempts );
+		} elseif ( $code >= 200 && $code < 400 ) {
+			delete_transient( 'zotero_display_backoff_attempts' );
+		}
+		if ( $backoff ) {
+			set_transient( 'zotero_display_backoff', time() + $backoff, $backoff );
+		}
+		if ( 304 === $code && ! empty( $args['conditional_version'] ) ) {
+			return array( 'not_modified' => true );
+		}
 		if ( $code < 200 || $code >= 300 ) {
 			return new \WP_Error(
 				'zotero_api_error',
@@ -69,7 +97,10 @@ class Zotero_API {
 					__( 'Zotero API returned an error (HTTP %d).', 'nature-zotero-publications' ),
 					$code
 				),
-				array( 'status' => $code )
+				array(
+					'status'      => $code,
+					'retry_after' => $backoff,
+				)
 			);
 		}
 
@@ -79,10 +110,10 @@ class Zotero_API {
 		}
 
 		$items = array();
-		foreach ( $body as $entry ) {
+		foreach ( $body as $offset => $entry ) {
 			$normalized = self::normalize_item( $entry, $args );
 			if ( $normalized ) {
-				$items[] = $normalized;
+				$items[ $offset ] = $normalized;
 			}
 		}
 
@@ -144,7 +175,7 @@ class Zotero_API {
 
 		return array(
 			'key'             => $item_key,
-			'title'           => ! empty( $data['title'] ) ? wp_strip_all_tags( $data['title'] ) : __( 'Untitled', 'nature-zotero-publications' ),
+			'title'           => isset( $data['title'] ) && is_string( $data['title'] ) && '' !== $data['title'] ? $data['title'] : __( 'Untitled', 'nature-zotero-publications' ),
 			'creators'        => $creators,
 			'creator_str'     => $creators ? implode( ', ', $creators ) : __( 'Unknown author', 'nature-zotero-publications' ),
 			'date'            => isset( $data['date'] ) ? $data['date'] : '',
@@ -155,7 +186,7 @@ class Zotero_API {
 			'source_url'      => $source_url,
 			'item_type'       => $item_type,
 			'item_type_label' => self::format_item_type( $item_type ),
-			'abstract'        => isset( $data['abstractNote'] ) ? wp_strip_all_tags( $data['abstractNote'] ) : '',
+			'abstract'        => isset( $data['abstractNote'] ) && is_string( $data['abstractNote'] ) ? $data['abstractNote'] : '',
 			'zotero_link'     => $zotero_link,
 			'external_url'    => $external_url,
 			'tags'            => isset( $data['tags'] ) ? wp_list_pluck( $data['tags'], 'tag' ) : array(),

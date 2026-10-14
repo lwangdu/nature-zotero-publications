@@ -33,7 +33,7 @@ Zotero limits an API response to 100 items. The plugin uses a resumable backgrou
 
 1. The block schedules synchronization for its configured library or collection.
 2. WordPress Cron downloads top-level Zotero items in 100-item batches.
-3. Normalized items and creators are stored in plugin-owned local index tables.
+3. Normalized items and creators are stored in plugin-owned local index tables. Creator names in the author-filter index are limited to 191 Unicode characters; hashes use the original names, and full names remain in publication data and search text.
 4. A newly completed generation replaces the previous generation only after every batch succeeds.
 5. The completed index powers search, filters, entry counts, and pagination.
 
@@ -238,3 +238,17 @@ Compare against Zotero's top-level **items in this view** count. Child attachmen
 ### 1.0.0
 
 - Initial release.
+
+## Index and request hardening
+
+Changing only cache duration preserves the publication index; changing the API key or default library clears it after the settings are saved. The API key field is intentionally blank: leave it blank to retain the key, or select **Remove the saved API key**. You may instead define `ZOTERO_DISPLAY_API_KEY` in `wp-config.php`; it overrides the database setting. Saving settings then removes the database copy. After rotating a configured constant, use **Clear Cache** to discard data from the previous credentials.
+
+Scientific titles and abstracts are stored as supplied and displayed as escaped text. Existing sources receive a full normalization refresh the next time they become stale, before conditional version checks are used. Long creator names are truncated only in the autocomplete index; full publication metadata and original-name hashes are retained.
+
+Synchronization uses an expiring, owner-checked database mutex. Zotero Backoff and Retry-After delays postpone work; unchanged libraries use conditional requests. Schema upgrades run in the admin area (activation still installs tables). Visit the administration area after updating before sending traffic to the site.
+
+Queries and author suggestions use bounded cache slots (32 per source and query kind) with a 15-second lifetime. Facet keys use query parameters rather than prepared SQL. Completed REST results have private browser caching; pending responses are not cached. Hidden tabs pause polling, and request failures back off to 60 seconds. Fragment caches expire against the last completed sync time and do not prevent refresh scheduling.
+
+**Publication privacy:** publishing a bibliography exposes its indexed metadata through signed public REST queries, including abstracts and tags even when display controls hide them. Those controls are presentation settings, not access controls. Only publish sources whose metadata may be public; use a separate public Zotero collection for confidential libraries.
+
+Full-text search, a single index supporting local sorts, incremental Zotero synchronization, and major build-tool upgrades remain separate architectural or maintenance work. Query caches reduce repeated work but do not replace host-level request rate limits.

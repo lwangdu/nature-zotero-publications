@@ -16,7 +16,7 @@ Nature Zotero Publications displays live Zotero library data in a dynamic Gutenb
 
 The block includes search, year/type/author filters, entry counts, and pagination. Initial results are rendered on the server and progressively enhanced with the WordPress Interactivity API. Author suggestions are requested only after a visitor types at least two characters, avoiding a large inline author list.
 
-The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the local index. During the first synchronization, already-indexed publications and controls remain available alongside an accessible progress indicator.
+The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the local index. Creator names in the author-filter index are limited to 191 Unicode characters; hashes use the original names, and full names remain in publication data and search text. During the first synchronization, already-indexed publications and controls remain available alongside an accessible progress indicator.
 
 The initial synchronization screen reloads as soon as its first indexed publications are available, then displays the partial index while background synchronization continues. Frontend page rendering primes at most one 100-item Zotero page; scheduled workers still process up to four pages per run. A single Zotero request can still take up to the configured 20-second HTTP timeout. Editor previews and REST requests only read the local index: typing a source ID never starts or schedules a synchronization. View the frontend page to initialize a new source. Library IDs must contain only digits; collection keys must be empty (the whole library) or exactly eight uppercase letters or digits.
 
@@ -156,3 +156,11 @@ Make sure User Library or Group Library matches the numeric ID. Private user or 
 = 1.0.0 =
 
 * Initial release.
+
+== Index and request hardening ==
+
+Cache-duration-only settings changes preserve the index. Connection changes clear it after saving. Leave the API key blank to retain it, or select Remove the saved API key. The ZOTERO_DISPLAY_API_KEY constant in wp-config.php overrides the saved key; saving settings removes the database copy. Clear Cache after rotating this constant.
+
+Titles and abstracts retain scientific notation and are escaped on display. Existing sources normalize again on their next stale refresh. Sync workers use expiring owner-checked locks and honor Zotero retry delays and conditional responses. Query caches are bounded and short-lived; hidden tabs pause polling. Visit the administration area after updating to apply schema upgrades.
+
+Publishing a bibliography makes indexed metadata, including hidden abstracts and tags, publicly queryable. Display controls are not privacy controls. Publish only metadata that may be public. Uninstall removes current and legacy sync locks as well as the existing plugin-owned data.

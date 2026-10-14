@@ -290,7 +290,7 @@ class REST_Controller {
 		);
 
 		if ( false !== $sync_result ) {
-			return rest_ensure_response( $sync_result );
+			return new \WP_REST_Response( $sync_result, 200, array( 'Cache-Control' => ! empty( $sync_result['sync']['ready'] ) ? 'private, max-age=15' : 'no-store' ) );
 		}
 
 		return new \WP_REST_Response(
@@ -305,7 +305,8 @@ class REST_Controller {
 					'total_pages' => 0,
 				),
 			),
-			202
+			202,
+			array( 'Cache-Control' => 'no-store' )
 		);
 	}
 

@@ -9,7 +9,7 @@ import {
 	Spinner,
 	Notice,
 } from '@wordpress/components';
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import { useState, useEffect, useCallback, useRef } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
 
@@ -136,11 +136,19 @@ export default function Edit( { attributes, setAttributes } ) {
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ error, setError ] = useState( null );
 
+	const previewRequest = useRef( 0 );
+	const previewController = useRef( null );
+
 	const fetchPreview = useCallback( () => {
+		const request = ++previewRequest.current;
+		previewController.current?.abort();
+		const controller = new AbortController();
+		previewController.current = controller;
 		setIsLoading( true );
 		setError( null );
 
 		apiFetch( {
+			signal: controller.signal,
 			path: addQueryArgs( '/zotero-display/v1/items', {
 				library_type: libraryType,
 				library_id: libraryId,
@@ -153,10 +161,19 @@ export default function Edit( { attributes, setAttributes } ) {
 			} ),
 		} )
 			.then( ( response ) => {
+				if ( request !== previewRequest.current ) {
+					return;
+				}
 				setData( response );
 				setIsLoading( false );
 			} )
 			.catch( ( err ) => {
+				if (
+					request !== previewRequest.current ||
+					err.name === 'AbortError'
+				) {
+					return;
+				}
 				setError(
 					err.message ||
 						__(
@@ -175,10 +192,39 @@ export default function Edit( { attributes, setAttributes } ) {
 		itemsPerPage,
 	] );
 
+	const cancelPreview = useCallback( () => {
+		++previewRequest.current;
+		previewController.current?.abort();
+	}, [] );
+
 	useEffect( () => {
 		const timeout = setTimeout( fetchPreview, 400 ); // debounce while typing IDs
-		return () => clearTimeout( timeout );
-	}, [ fetchPreview ] );
+		return () => {
+			clearTimeout( timeout );
+			cancelPreview();
+		};
+	}, [ fetchPreview, cancelPreview ] );
+
+	let emptyMessage = __(
+		'No indexed publications yet. View the page to start synchronization, then refresh this preview.',
+		'nature-zotero-publications'
+	);
+	if ( data?.sync?.status === 'syncing' ) {
+		emptyMessage = __(
+			'Synchronizing publications. Refresh this preview shortly.',
+			'nature-zotero-publications'
+		);
+	} else if ( data?.sync?.status === 'error' ) {
+		emptyMessage = __(
+			'Synchronization failed. Check the source settings and try again later.',
+			'nature-zotero-publications'
+		);
+	} else if ( data?.sync?.ready ) {
+		emptyMessage = __(
+			'No items found for this library/collection.',
+			'nature-zotero-publications'
+		);
+	}
 
 	return (
 		<>
@@ -492,15 +538,7 @@ export default function Edit( { attributes, setAttributes } ) {
 						<div className="zotero-publication-list">
 							{ data.items.length === 0 && (
 								<p className="zotero-display-empty-preview">
-									{ data.sync?.ready
-										? __(
-												'No items found for this library/collection.',
-												'nature-zotero-publications'
-										  )
-										: __(
-												'No indexed publications yet. View the page to start synchronization, then refresh this preview.',
-												'nature-zotero-publications'
-										  ) }
+									{ emptyMessage }
 								</p>
 							) }
 							{ data.items.map( ( item ) => (

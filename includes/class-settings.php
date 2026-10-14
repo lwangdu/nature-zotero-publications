@@ -39,6 +39,8 @@ class Settings {
 	 * Register WordPress hooks.
 	 */
 	private function __construct() {
+		add_action( 'update_option_' . self::OPTION_KEY, array( $this, 'settings_updated' ), 10, 2 );
+		add_action( 'add_option_' . self::OPTION_KEY, array( $this, 'settings_added' ), 10, 2 );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_post_zotero_display_clear_cache', array( $this, 'handle_clear_cache' ) );
@@ -81,17 +83,57 @@ class Settings {
 	 * @return array Sanitized settings.
 	 */
 	public function sanitize_settings( $input ) {
-		$output                  = array();
-		$output['api_key']       = isset( $input['api_key'] ) ? sanitize_text_field( $input['api_key'] ) : '';
+		$stored = get_option( self::OPTION_KEY, array() );
+		$stored = is_array( $stored ) ? $stored : array();
+		if ( ! is_array( $input ) ) {
+			return $stored;
+		}
+		$output            = array();
+		$output['api_key'] = ! empty( $input['api_key'] ) ? sanitize_text_field( $input['api_key'] ) : ( $stored['api_key'] ?? '' );
+		if ( ! empty( $input['remove_api_key'] ) || defined( 'ZOTERO_DISPLAY_API_KEY' ) ) {
+			$output['api_key'] = '';
+		}
 		$output['library_type']  = ( isset( $input['library_type'] ) && 'group' === $input['library_type'] ) ? 'group' : 'user';
 		$output['library_id']    = isset( $input['library_id'] ) ? sanitize_text_field( $input['library_id'] ) : '';
 		$output['cache_minutes'] = isset( $input['cache_minutes'] ) ? max( 1, absint( $input['cache_minutes'] ) ) : 60;
 
-		// Clear caches automatically whenever core connection settings change.
-		Zotero_API::clear_all_caches();
-		Sync::clear_all();
-
 		return $output;
+	}
+
+	/**
+	 * Invalidate the index only after a connection setting actually changes.
+	 *
+	 * @param mixed $old Previous option value.
+	 * @param mixed $saved Saved option value.
+	 * @return void
+	 */
+	public function settings_updated( $old, $saved ) {
+		$old   = is_array( $old ) ? $old : array();
+		$saved = is_array( $saved ) ? $saved : array();
+		foreach ( array( 'api_key', 'library_type', 'library_id' ) as $key ) {
+			if ( 'api_key' === $key && defined( 'ZOTERO_DISPLAY_API_KEY' ) ) {
+				continue;
+			}
+			if ( ( $old[ $key ] ?? '' ) !== ( $saved[ $key ] ?? '' ) ) {
+				Zotero_API::clear_all_caches();
+				Sync::clear_all();
+				return;
+			}
+		}
+		Block::clear_fragment_cache();
+	}
+
+	/**
+	 * Apply the same invalidation policy on the first successful option save.
+	 *
+	 * @param string $option Option name.
+	 * @param mixed  $value Saved option value.
+	 * @return void
+	 */
+	public function settings_added( $option, $value ) {
+		if ( get_option( Sync::SCHEMA_OPTION, false ) ) {
+			$this->settings_updated( array(), $value );
+		}
 	}
 
 	/**
@@ -100,8 +142,9 @@ class Settings {
 	 * @return array Plugin settings.
 	 */
 	public static function get_settings() {
-		return wp_parse_args(
-			get_option( self::OPTION_KEY, array() ),
+		$stored   = get_option( self::OPTION_KEY, array() );
+		$settings = wp_parse_args(
+			is_array( $stored ) ? $stored : array(),
 			array(
 				'api_key'       => '',
 				'library_type'  => 'user',
@@ -109,6 +152,10 @@ class Settings {
 				'cache_minutes' => 60,
 			)
 		);
+		if ( defined( 'ZOTERO_DISPLAY_API_KEY' ) ) {
+			$settings['api_key'] = (string) ZOTERO_DISPLAY_API_KEY;
+		}
+		return $settings;
 	}
 
 	/**
@@ -155,8 +202,11 @@ class Settings {
 					<tr>
 						<th scope="row"><label for="zotero_api_key"><?php esc_html_e( 'Zotero API Key', 'nature-zotero-publications' ); ?></label></th>
 						<td>
-							<input type="password" id="zotero_api_key" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[api_key]" value="<?php echo esc_attr( $settings['api_key'] ); ?>" class="regular-text" autocomplete="off" />
-							<p class="description"><?php esc_html_e( 'Required for private libraries/groups. Public libraries can leave this blank. Create a key at zotero.org/settings/keys.', 'nature-zotero-publications' ); ?></p>
+							<input type="password" id="zotero_api_key" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[api_key]" value="" <?php disabled( defined( 'ZOTERO_DISPLAY_API_KEY' ) ); ?> class="regular-text" autocomplete="off" />
+							<p class="description"><?php esc_html_e( 'Leave blank to keep the saved key. Required for private libraries/groups. A ZOTERO_DISPLAY_API_KEY constant in wp-config.php overrides this field.', 'nature-zotero-publications' ); ?></p>
+							<?php if ( ! defined( 'ZOTERO_DISPLAY_API_KEY' ) ) : ?>
+								<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[remove_api_key]" value="1" /> <?php esc_html_e( 'Remove the saved API key', 'nature-zotero-publications' ); ?></label>
+							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>

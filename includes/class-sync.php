@@ -34,7 +34,7 @@ class Sync {
 	 */
 	public static function register_hooks() {
 		add_action( self::HOOK, array( __CLASS__, 'run_batch' ) );
-		self::maybe_upgrade();
+		add_action( 'admin_init', array( __CLASS__, 'maybe_upgrade' ) );
 	}
 
 	/**
@@ -99,7 +99,7 @@ class Sync {
 	 *
 	 * @return void
 	 */
-	private static function maybe_upgrade() {
+	public static function maybe_upgrade() {
 		if ( self::SCHEMA_VERSION !== (int) get_option( self::SCHEMA_OPTION, 0 ) ) {
 			self::install();
 		}
@@ -131,6 +131,10 @@ class Sync {
 			);
 		}
 
+		$sorts = array( 'date', 'title', 'creator', 'dateAdded', 'dateModified', 'publicationTitle', 'itemType', 'publisher', 'journalAbbreviation', 'language', 'accessDate', 'libraryCatalog', 'callNumber', 'rights', 'addedBy' );
+		if ( ! in_array( $args['sort'] ?? 'date', $sorts, true ) || ! in_array( $args['direction'] ?? 'desc', array( 'asc', 'desc' ), true ) ) {
+			return new \WP_Error( 'zotero_display_invalid_sort', __( 'Choose a supported Zotero sort and direction.', 'nature-zotero-publications' ), array( 'status' => 400 ) );
+		}
 		return true;
 	}
 
@@ -144,24 +148,41 @@ class Sync {
 		$args       = self::normalize_source_args( $args );
 		$source_key = self::source_key( $args );
 		$state      = self::get_state( $source_key );
-		$now        = time();
 		$ttl        = max( 1, (int) $args['cache_minutes'] ) * MINUTE_IN_SECONDS;
-		$stale      = empty( $state['last_sync'] ) || ( $now - (int) $state['last_sync'] ) >= $ttl;
-		$retry      = 'error' === $state['status'] && ( $now - (int) $state['updated_at'] ) >= self::RETRY_DELAY;
-
-		if ( 'error' === $state['status'] && ! $retry ) {
+		if ( ! empty( $state['source_args'] ) ) {
+			if ( 'syncing' === $state['status'] ) {
+				self::schedule_batch( $source_key, max( 1, (int) ( $state['retry_at'] ?? 0 ) - time() ) );
+				return $state;
+			}
+			if ( ( 'error' === $state['status'] && time() - (int) $state['updated_at'] < self::RETRY_DELAY ) || ( 'complete' === $state['status'] && time() - (int) $state['last_sync'] < $ttl ) ) {
+				return $state;
+			}
+		}
+		$lock_key = 'zotero_sync_lock_' . $source_key;
+		$lock     = self::acquire_lock( $lock_key );
+		if ( false === $lock ) {
+			return self::get_state( $source_key );
+		}
+		try {
+			// Re-read after acquiring the mutex: another request may have started a sync.
+			wp_cache_delete( self::STATE_PREFIX . $source_key, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+			$state = self::get_state( $source_key );
+			$stale = empty( $state['last_sync'] ) || time() - (int) $state['last_sync'] >= $ttl;
+			$retry = 'error' === $state['status'] && time() - (int) $state['updated_at'] >= self::RETRY_DELAY;
+			if ( 'error' === $state['status'] && ! $retry ) {
+				return $state;
+			}
+			if ( empty( $state['source_args'] ) || ( $stale && 'syncing' !== $state['status'] ) || $retry ) {
+				$state = self::start_sync( $source_key, $args, ! empty( $state['ready'] ) );
+			}
+			if ( 'syncing' === $state['status'] ) {
+				self::schedule_batch( $source_key, max( 1, (int) ( $state['retry_at'] ?? 0 ) - time() ) );
+			}
 			return $state;
+		} finally {
+			self::release_lock( $lock_key, $lock );
 		}
-
-		if ( empty( $state['source_args'] ) || ( $stale && 'syncing' !== $state['status'] ) || $retry ) {
-			$state = self::start_sync( $source_key, $args, ! empty( $state['ready'] ) );
-		}
-
-		if ( 'syncing' === $state['status'] ) {
-			self::schedule_batch( $source_key );
-		}
-
-		return $state;
 	}
 
 	/**
@@ -198,92 +219,156 @@ class Sync {
 	public static function run_batch( $source_key, $max_pages = self::PAGES_PER_RUN ) {
 		$source_key = sanitize_key( $source_key );
 		$lock_key   = 'zotero_sync_lock_' . $source_key;
+		$lock       = self::acquire_lock( $lock_key );
 
-		if ( get_transient( $lock_key ) ) {
+		if ( false === $lock ) {
 			self::schedule_batch( $source_key, 30 );
 			return;
 		}
 
-		set_transient( $lock_key, 1, 2 * MINUTE_IN_SECONDS );
-		$state = self::get_state( $source_key );
+		try {
+			// Discard progress cached before another worker released the mutex.
+			wp_cache_delete( self::STATE_PREFIX . $source_key, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+			$state = self::get_state( $source_key );
 
-		if ( 'syncing' !== $state['status'] || empty( $state['source_args'] ) || empty( $state['sync_token'] ) ) {
-			delete_transient( $lock_key );
-			return;
-		}
+			if ( 'syncing' !== $state['status'] || empty( $state['source_args'] ) || empty( $state['sync_token'] ) ) {
+				return;
+			}
 
-		$settings              = Settings::get_settings();
-		$args                  = $state['source_args'];
-		$args['api_key']       = $settings['api_key'];
-		$last_modified_version = isset( $state['last_modified_version'] ) ? (int) $state['last_modified_version'] : 0;
-		$completed             = false;
-		$batch_started         = microtime( true );
+			if ( (int) ( $state['retry_at'] ?? 0 ) > time() ) {
+				self::schedule_batch( $source_key, $state['retry_at'] - time() );
+				return;
+			}
+			$settings        = Settings::get_settings();
+			$args            = $state['source_args'];
+			$args['api_key'] = $settings['api_key'];
+			if ( ! empty( $state['ready'] ) && 1 === (int) ( $state['normalization_version'] ?? 0 ) ) {
+				$args['conditional_version'] = (int) $state['active_version'];
+			}
+			$last_modified_version = isset( $state['last_modified_version'] ) ? (int) $state['last_modified_version'] : 0;
+			$completed             = false;
+			$batch_started         = microtime( true );
 
-		$max_pages = min( self::PAGES_PER_RUN, max( 1, (int) $max_pages ) );
-		for ( $page_number = 0; $page_number < $max_pages; ++$page_number ) {
-			$page = Zotero_API::fetch_page( $args, (int) $state['next_start'], self::PAGE_SIZE );
-			if ( is_wp_error( $page ) ) {
-				$state['status']     = 'error';
-				$state['error']      = $page->get_error_message();
-				$state['updated_at'] = time();
+			$max_pages = min( self::PAGES_PER_RUN, max( 1, (int) $max_pages ) );
+			for ( $page_number = 0; $page_number < $max_pages; ++$page_number ) {
+				$page = Zotero_API::fetch_page( $args, (int) $state['next_start'], self::PAGE_SIZE );
+				if ( is_wp_error( $page ) ) {
+					$error_data = $page->get_error_data();
+					if ( ! empty( $error_data['retry_after'] ) ) {
+						$state['retry_at'] = time() + (int) $error_data['retry_after'];
+						self::set_state( $source_key, $state );
+						self::schedule_batch( $source_key, (int) $error_data['retry_after'] );
+						return;
+					}
+					$state['status']     = 'error';
+					$state['error']      = $page->get_error_message();
+					$state['updated_at'] = time();
+					self::set_state( $source_key, $state );
+					return;
+				}
+
+				if ( ! empty( $page['not_modified'] ) ) {
+					$state['status']     = 'complete';
+					$state['total']      = (int) ( $state['active_total'] ?? $state['total'] );
+					$state['processed']  = $state['total'];
+					$state['last_sync']  = time();
+					$state['updated_at'] = time();
+					$state['error']      = '';
+					self::set_state( $source_key, $state );
+					return;
+				}
+				if ( 1 === (int) ( $state['normalization_version'] ?? 0 ) && ! empty( $state['ready'] ) && 0 === (int) $state['next_start'] && ! empty( $state['active_version'] ) && (int) $state['active_version'] === (int) $page['last_modified_version'] ) {
+					$state['status']       = 'complete';
+					$state['processed']    = (int) $page['total'];
+					$state['total']        = (int) $page['total'];
+					$state['active_total'] = (int) $page['total'];
+					$state['last_sync']    = time();
+					$state['updated_at']   = time();
+					$state['error']        = '';
+					self::set_state( $source_key, $state );
+					return;
+				}
+
+				if ( $last_modified_version && ! empty( $page['last_modified_version'] ) && $last_modified_version !== (int) $page['last_modified_version'] ) {
+					self::start_sync( $source_key, $state['source_args'], ! empty( $state['ready'] ) );
+					return;
+				}
+
+				$stored = self::store_page( $source_key, $state['sync_token'], (int) $state['next_start'], $page['items'] );
+				if ( is_wp_error( $stored ) ) {
+					$state['status']     = 'error';
+					$state['error']      = $stored->get_error_message();
+					$state['updated_at'] = time();
+					self::set_state( $source_key, $state );
+					return;
+				}
+
+				$state['total']                 = (int) $page['total'];
+				$state['processed']            += (int) $page['raw_count'];
+				$state['next_start']           += (int) $page['raw_count'];
+				$state['updated_at']            = time();
+				$last_modified_version          = max( $last_modified_version, (int) $page['last_modified_version'] );
+				$state['last_modified_version'] = $last_modified_version;
 				self::set_state( $source_key, $state );
-				delete_transient( $lock_key );
-				return;
+
+				if ( 0 === (int) $page['raw_count'] || ( $state['total'] && $state['next_start'] >= $state['total'] ) || (int) $page['raw_count'] < self::PAGE_SIZE ) {
+					$completed = true;
+					break;
+				}
+
+				if ( ( microtime( true ) - $batch_started ) >= self::BATCH_TIME_LIMIT ) {
+					break;
+				}
 			}
 
-			if ( ! empty( $state['ready'] ) && 0 === (int) $state['next_start'] && ! empty( $state['active_version'] ) && (int) $state['active_version'] === (int) $page['last_modified_version'] ) {
-				$state['status']     = 'complete';
-				$state['processed']  = (int) $page['total'];
-				$state['total']      = (int) $page['total'];
-				$state['last_sync']  = time();
-				$state['updated_at'] = time();
-				$state['error']      = '';
-				self::set_state( $source_key, $state );
-				delete_transient( $lock_key );
-				return;
+			if ( $completed ) {
+				self::complete_sync( $source_key, $state );
+			} else {
+				self::schedule_batch( $source_key );
 			}
+		} finally {
+			self::release_lock( $lock_key, $lock );
+		}
+	}
 
-			if ( $last_modified_version && ! empty( $page['last_modified_version'] ) && $last_modified_version !== (int) $page['last_modified_version'] ) {
-				self::start_sync( $source_key, $state['source_args'], ! empty( $state['ready'] ) );
-				delete_transient( $lock_key );
-				return;
-			}
-
-			$stored = self::store_page( $source_key, $state['sync_token'], (int) $state['next_start'], $page['items'] );
-			if ( is_wp_error( $stored ) ) {
-				$state['status']     = 'error';
-				$state['error']      = $stored->get_error_message();
-				$state['updated_at'] = time();
-				self::set_state( $source_key, $state );
-				delete_transient( $lock_key );
-				return;
-			}
-
-			$state['total']                 = (int) $page['total'];
-			$state['processed']            += (int) $page['raw_count'];
-			$state['next_start']           += (int) $page['raw_count'];
-			$state['updated_at']            = time();
-			$last_modified_version          = max( $last_modified_version, (int) $page['last_modified_version'] );
-			$state['last_modified_version'] = $last_modified_version;
-			self::set_state( $source_key, $state );
-
-			if ( 0 === (int) $page['raw_count'] || ( $state['total'] && $state['next_start'] >= $state['total'] ) || (int) $page['raw_count'] < self::PAGE_SIZE ) {
-				$completed = true;
-				break;
-			}
-
-			if ( ( microtime( true ) - $batch_started ) >= self::BATCH_TIME_LIMIT ) {
-				break;
+	/**
+	 * Acquire an expiring database mutex using the unique option name.
+	 *
+	 * @param string $key Lock name.
+	 * @return string|false Owner value, or false when another worker owns it.
+	 */
+	private static function acquire_lock( $key ) {
+		global $wpdb;
+		$value = ( time() + 120 ) . ':' . wp_generate_uuid4();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Atomic insert relies on the unique option name.
+		$inserted = $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, %s)', $wpdb->options, $key, $value, 'off' ) );
+		if ( 1 === $inserted ) {
+			return $value;
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Read the lock directly, without an option-cache race.
+		$old = $wpdb->get_var( $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name = %s', $wpdb->options, $key ) );
+		if ( $old && (int) $old < time() ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Compare-and-swap prevents two workers reclaiming an expired lock.
+			$replaced = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET option_value = %s WHERE option_name = %s AND option_value = %s', $wpdb->options, $value, $key, $old ) );
+			if ( 1 === $replaced ) {
+				return $value;
 			}
 		}
+		return false;
+	}
 
-		if ( $completed ) {
-			self::complete_sync( $source_key, $state );
-		} else {
-			self::schedule_batch( $source_key );
-		}
-
-		delete_transient( $lock_key );
+	/**
+	 * Release only the mutex owned by this worker.
+	 *
+	 * @param string $key Lock name.
+	 * @param string $value Owner value.
+	 * @return void
+	 */
+	private static function release_lock( $key, $value ) {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Ownership check protects a newer lock from an expired worker.
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE option_name = %s AND option_value = %s', $wpdb->options, $key, $value ) );
 	}
 
 	/**
@@ -307,8 +392,15 @@ class Sync {
 			return false;
 		}
 
-		$page           = max( 1, (int) $page );
-		$per_page       = min( 100, max( 1, (int) $per_page ) );
+		$page      = max( 1, (int) $page );
+		$per_page  = min( 100, max( 1, (int) $per_page ) );
+		$identity  = md5( wp_json_encode( array( $source_key, $sync_token, $state['processed'], $filters, $page, $per_page, $include_facets, $include_authors ) ) );
+		$cache_key = 'zotero_display_results_' . $source_key . '_' . ( hexdec( substr( $identity, 0, 4 ) ) % 32 );
+		$cached    = get_transient( $cache_key );
+		if ( is_array( $cached ) && $identity === $cached['identity'] ) {
+			$cached['data']['sync'] = self::public_state( $state );
+			return $cached['data'];
+		}
 		$offset         = ( $page - 1 ) * $per_page;
 		$where          = self::build_where( $source_key, $sync_token, $filters );
 		$items_table    = self::items_table();
@@ -337,7 +429,7 @@ class Sync {
 			? self::get_stats( $where, true, $include_authors )
 			: array( 'total_items' => $total );
 
-		return array(
+		$result = array(
 			'items'      => $items,
 			'sync'       => self::public_state( $state ),
 			'stats'      => $stats,
@@ -348,6 +440,15 @@ class Sync {
 				'total_pages' => (int) ceil( $total / $per_page ),
 			),
 		);
+		set_transient(
+			$cache_key,
+			array(
+				'identity' => $identity,
+				'data'     => $result,
+			),
+			15
+		);
+		return $result;
 	}
 
 	/**
@@ -370,7 +471,13 @@ class Sync {
 			return false;
 		}
 
-		$limit          = min( 50, max( 1, (int) $limit ) );
+		$limit     = min( 50, max( 1, (int) $limit ) );
+		$identity  = md5( wp_json_encode( array( $sync_token, $state['processed'], $search, $limit ) ) );
+		$cache_key = 'zotero_display_authors_' . $source_key . '_' . ( hexdec( substr( $identity, 0, 4 ) ) % 32 );
+		$cached    = get_transient( $cache_key );
+		if ( is_array( $cached ) && $identity === $cached['identity'] ) {
+			return $cached['data'];
+		}
 		$creators_table = self::creators_table();
 		$items_table    = self::items_table();
 		$like           = '%' . $wpdb->esc_like( $search ) . '%';
@@ -391,7 +498,16 @@ class Sync {
 		);
 		$rows           = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin-owned index query with identifiers and values prepared above.
 
-		return self::normalize_facets( $rows );
+		$authors = self::normalize_facets( $rows );
+		set_transient(
+			$cache_key,
+			array(
+				'identity' => $identity,
+				'data'     => $authors,
+			),
+			15
+		);
+		return $authors;
 	}
 
 	/**
@@ -442,8 +558,11 @@ class Sync {
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', self::items_table() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Fixed plugin-owned table identifier is prepared.
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', self::creators_table() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Fixed plugin-owned table identifier is prepared.
 
-		$like = $wpdb->esc_like( self::STATE_PREFIX ) . '%';
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- WordPress has no delete-options-by-prefix API.
+		$like  = $wpdb->esc_like( self::STATE_PREFIX ) . '%';
+		$names = $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s', $wpdb->options, $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Enumerate plugin-owned state for cache-aware deletion.
+		foreach ( $names as $name ) {
+			delete_option( $name );
+		}
 	}
 
 	/**
@@ -472,7 +591,9 @@ class Sync {
 			'sync_token'            => md5( wp_generate_uuid4() ),
 			'next_start'            => 0,
 			'processed'             => 0,
-			'total'                 => 0,
+			'total'                 => $ready ? (int) $previous_state['total'] : 0,
+			'normalization_version' => (int) ( $previous_state['normalization_version'] ?? 0 ),
+			'active_total'          => $ready ? (int) ( $previous_state['active_total'] ?? $previous_state['total'] ) : 0,
 			'last_modified_version' => 0,
 			'active_token'          => $ready && ! empty( $previous_state['active_token'] ) ? $previous_state['active_token'] : '',
 			'active_version'        => $ready && ! empty( $previous_state['active_version'] ) ? (int) $previous_state['active_version'] : 0,
@@ -538,7 +659,8 @@ class Sync {
 				$creator_rows[] = array(
 					$source_key,
 					$storage_key,
-					$creator,
+					// Match varchar(191) without splitting UTF-8 characters; retain full-name identity.
+					mb_substr( $creator, 0, 191, 'UTF-8' ),
 					md5( $creator ),
 					$sync_token,
 				);
@@ -614,13 +736,15 @@ class Sync {
 	private static function complete_sync( $source_key, array $state ) {
 		global $wpdb;
 
-		$state['status']         = 'complete';
-		$state['ready']          = true;
-		$state['active_token']   = $state['sync_token'];
-		$state['active_version'] = (int) $state['last_modified_version'];
-		$state['last_sync']      = time();
-		$state['updated_at']     = time();
-		$state['error']          = '';
+		$state['status']                = 'complete';
+		$state['ready']                 = true;
+		$state['active_token']          = $state['sync_token'];
+		$state['active_version']        = (int) $state['last_modified_version'];
+		$state['normalization_version'] = 1;
+		$state['active_total']          = (int) $state['total'];
+		$state['last_sync']             = time();
+		$state['updated_at']            = time();
+		$state['error']                 = '';
 		self::set_state( $source_key, $state );
 
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE source_key = %s AND sync_token <> %s', self::items_table(), $source_key, $state['active_token'] ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Plugin table identifier and values are prepared.
@@ -642,10 +766,11 @@ class Sync {
 		$items_table    = self::items_table();
 		$creators_table = self::creators_table();
 		$prepared_where = self::prepare_sql( $where['sql'], $where['params'] );
-		$cache_key      = 'zotero_display_stats_' . md5( $prepared_where . ':' . (int) $include_authors );
+		$identity       = md5( wp_json_encode( array( $where, (bool) $include_authors ) ) );
+		$cache_key      = 'zotero_display_stats_' . $where['params'][0] . '_' . ( hexdec( substr( $identity, 0, 4 ) ) % 32 );
 		$cached_stats   = get_transient( $cache_key );
-		if ( is_array( $cached_stats ) ) {
-			return $cached_stats;
+		if ( is_array( $cached_stats ) && $identity === $cached_stats['identity'] ) {
+			return $cached_stats['data'];
 		}
 
 		$summary_sql = "SELECT COUNT(*) AS total_items, COUNT(DISTINCT NULLIF(i.item_type, '')) AS total_types, MIN(NULLIF(i.date_year, '')) AS min_year, MAX(NULLIF(i.date_year, '')) AS max_year FROM {$items_table} i WHERE {$prepared_where}";
@@ -669,7 +794,14 @@ class Sync {
 			$stats['available_authors'] = self::normalize_facets( $wpdb->get_results( $authors_sql, ARRAY_A ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin-owned table name; all request values are prepared above.
 		}
 
-		set_transient( $cache_key, $stats, 5 * MINUTE_IN_SECONDS );
+		set_transient(
+			$cache_key,
+			array(
+				'identity' => $identity,
+				'data'     => $stats,
+			),
+			15
+		);
 
 		return $stats;
 	}

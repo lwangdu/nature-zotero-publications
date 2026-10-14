@@ -2,7 +2,12 @@
  * Interactivity API behavior for publication search, filters, and pagination.
  */
 
-import { getContext, store, withSyncEvent } from '@wordpress/interactivity';
+import {
+	getContext,
+	getElement,
+	store,
+	withSyncEvent,
+} from '@wordpress/interactivity';
 
 const delay = ( milliseconds ) =>
 	new Promise( ( resolve ) => setTimeout( resolve, milliseconds ) );
@@ -95,6 +100,7 @@ function* fetchItems( context, requestId ) {
 		context.totalPages = data.pagination.total_pages;
 		context.isEmpty = data.items.length === 0;
 		context.message = context.noResultsMessage;
+		return true;
 	} catch {
 		if ( requestId === context.requestId ) {
 			context.hasFetched = true;
@@ -111,7 +117,7 @@ function* fetchItems( context, requestId ) {
 
 function* requestItems( context ) {
 	const requestId = ++context.requestId;
-	yield* fetchItems( context, requestId );
+	return yield* fetchItems( context, requestId );
 }
 
 function paginationItems( context ) {
@@ -178,7 +184,12 @@ store( 'zotero-display', {
 				include_facets: '0',
 			} );
 
+			let retryDelay = 5000;
 			while ( true ) {
+				if ( document.hidden ) {
+					yield delay( 30000 );
+					continue;
+				}
 				try {
 					const response = yield fetch(
 						`${ context.restUrl }items?${ params.toString() }`
@@ -188,6 +199,7 @@ store( 'zotero-display', {
 					}
 
 					const data = yield response.json();
+					retryDelay = 5000;
 					if (
 						data.sync?.ready ||
 						( context.reloadOnFirstItems && data.items?.length > 0 )
@@ -203,10 +215,11 @@ store( 'zotero-display', {
 						}
 					}
 				} catch {
-					// Keep the current progress visible and retry after the interval.
+					// Back off on failures while keeping the current progress visible.
+					retryDelay = Math.min( 60000, retryDelay * 2 );
 				}
 
-				yield delay( 5000 );
+				yield delay( retryDelay );
 			}
 		},
 	},
@@ -381,24 +394,48 @@ store( 'zotero-display', {
 		} ),
 		*previousPage() {
 			const context = getContext();
+			const root = getElement().ref.closest( '.zotero-display-block' );
 			if ( context.page > 1 && ! context.isLoading ) {
 				--context.page;
-				yield* requestItems( context );
+				if ( yield* requestItems( context ) ) {
+					yield delay( 0 );
+					const results = root?.querySelector(
+						'[data-zotero-results]'
+					);
+					results?.focus( { preventScroll: true } );
+					results?.scrollIntoView( { block: 'start' } );
+				}
 			}
 		},
 		*nextPage() {
 			const context = getContext();
+			const root = getElement().ref.closest( '.zotero-display-block' );
 			if ( context.page < context.totalPages && ! context.isLoading ) {
 				++context.page;
-				yield* requestItems( context );
+				if ( yield* requestItems( context ) ) {
+					yield delay( 0 );
+					const results = root?.querySelector(
+						'[data-zotero-results]'
+					);
+					results?.focus( { preventScroll: true } );
+					results?.scrollIntoView( { block: 'start' } );
+				}
 			}
 		},
 		*goToPage() {
 			const context = getContext();
+			const root = getElement().ref.closest( '.zotero-display-block' );
 			const page = context.pagination.page;
 			if ( page > 0 && page !== context.page && ! context.isLoading ) {
 				context.page = page;
-				yield* requestItems( context );
+				if ( yield* requestItems( context ) ) {
+					yield delay( 0 );
+					const results = root?.querySelector(
+						'[data-zotero-results]'
+					);
+					results?.focus( { preventScroll: true } );
+					results?.scrollIntoView( { block: 'start' } );
+				}
 			}
 		},
 	},
