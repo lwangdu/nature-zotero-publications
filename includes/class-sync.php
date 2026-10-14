@@ -106,6 +106,35 @@ class Sync {
 	}
 
 	/**
+	 * Validate source identifiers before querying or scheduling a source.
+	 *
+	 * @param array $args Resolved source arguments, including saved defaults.
+	 * @return true|\WP_Error True for valid identifiers, otherwise a client error.
+	 */
+	public static function validate_source_args( array $args ) {
+		$library_id = $args['library_id'] ?? '';
+		$collection = $args['collection'] ?? '';
+
+		if ( ! is_string( $library_id ) || ! preg_match( '/\A[0-9]+\z/', $library_id ) ) {
+			return new \WP_Error(
+				'zotero_display_invalid_library_id',
+				__( 'The Zotero library ID must contain only digits.', 'nature-zotero-publications' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! is_string( $collection ) || ( '' !== $collection && ! preg_match( '/\A[A-Z0-9]{8}\z/', $collection ) ) ) {
+			return new \WP_Error(
+				'zotero_display_invalid_collection',
+				__( 'The Zotero collection key must contain exactly eight uppercase letters or digits, or be empty for the whole library.', 'nature-zotero-publications' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return true;
+	}
+
+	/**
 	 * Schedule a full sync if this source is new, stale, failed, or interrupted.
 	 *
 	 * @param array $args Zotero source query arguments.

@@ -18,7 +18,7 @@ The block includes search, year/type/author filters, entry counts, and paginatio
 
 The plugin synchronizes every top-level item from the configured Zotero library or collection into a local WordPress index using resumable background batches. Search, filters, counts, and pagination use the local index. During the first synchronization, already-indexed publications and controls remain available alongside an accessible progress indicator.
 
-The initial synchronization screen reloads as soon as its first indexed publications are available, then displays the partial index while background synchronization continues. Browser-triggered priming fetches at most one 100-item Zotero page; scheduled workers still process up to four pages per run. A single Zotero request can still take up to the configured 20-second HTTP timeout.
+The initial synchronization screen reloads as soon as its first indexed publications are available, then displays the partial index while background synchronization continues. Frontend page rendering primes at most one 100-item Zotero page; scheduled workers still process up to four pages per run. A single Zotero request can still take up to the configured 20-second HTTP timeout. Editor previews and REST requests only read the local index: typing a source ID never starts or schedules a synchronization. View the frontend page to initialize a new source. Library IDs must contain only digits; collection keys must be empty (the whole library) or exactly eight uppercase letters or digits.
 
 Private API keys remain on the server and are never included in scheduled-event arguments, block markup, or REST responses. Public REST requests are limited to server-signed rendered block sources.
 

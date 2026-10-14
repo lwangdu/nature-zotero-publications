@@ -132,6 +132,13 @@ class Block {
 			return '';
 		}
 
+		$valid = Sync::validate_source_args( $query_args );
+		if ( is_wp_error( $valid ) ) {
+			return current_user_can( 'edit_posts' )
+				? '<p class="zotero-display-error">' . esc_html( $valid->get_error_message() ) . '</p>'
+				: '';
+		}
+
 		$per_page           = max( 1, (int) $attributes['itemsPerPage'] );
 		$fragment_cache_key = self::fragment_cache_key( $query_args, $attributes, 1 );
 		$cached_fragment    = get_transient( $fragment_cache_key );
@@ -141,7 +148,17 @@ class Block {
 
 		$include_facets = $attributes['showStats'] || $attributes['showFilters'];
 		$sync_result    = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
-		$sync_state     = Sync::ensure_scheduled( $query_args );
+		$sync_state     = Sync::get_public_state( $query_args );
+
+		// Server-rendered editor previews are REST requests too: never start syncs there.
+		if ( ! is_admin() && ! wp_is_rest_endpoint() ) {
+			if ( false === $sync_result ) {
+				$sync_state  = Sync::prime_first_batch( $query_args );
+				$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
+			} else {
+				$sync_state = Sync::ensure_scheduled( $query_args );
+			}
+		}
 
 		if ( false !== $sync_result ) {
 			$first_page  = $sync_result['items'];

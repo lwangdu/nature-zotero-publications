@@ -492,10 +492,15 @@ export default function Edit( { attributes, setAttributes } ) {
 						<div className="zotero-publication-list">
 							{ data.items.length === 0 && (
 								<p className="zotero-display-empty-preview">
-									{ __(
-										'No items found for this library/collection.',
-										'nature-zotero-publications'
-									) }
+									{ data.sync?.ready
+										? __(
+												'No items found for this library/collection.',
+												'nature-zotero-publications'
+										  )
+										: __(
+												'No indexed publications yet. View the page to start synchronization, then refresh this preview.',
+												'nature-zotero-publications'
+										  ) }
 								</p>
 							) }
 							{ data.items.map( ( item ) => (

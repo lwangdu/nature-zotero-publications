@@ -63,10 +63,14 @@ class REST_Controller {
 					),
 					'library_id'       => array(
 						'type'              => 'string',
+						'pattern'           => '\A[0-9]*\z',
+						'validate_callback' => 'rest_validate_request_arg',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'collection'       => array(
 						'type'              => 'string',
+						'pattern'           => '\A(?:[A-Z0-9]{8})?\z',
+						'validate_callback' => 'rest_validate_request_arg',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'sort'             => array(
@@ -132,10 +136,14 @@ class REST_Controller {
 					),
 					'library_id'       => array(
 						'type'              => 'string',
+						'pattern'           => '\A[0-9]*\z',
+						'validate_callback' => 'rest_validate_request_arg',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'collection'       => array(
 						'type'              => 'string',
+						'pattern'           => '\A(?:[A-Z0-9]{8})?\z',
+						'validate_callback' => 'rest_validate_request_arg',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'sort'             => array(
@@ -187,7 +195,7 @@ class REST_Controller {
 
 		return array(
 			'library_type'  => $library_type ? $library_type : $settings['library_type'],
-			'library_id'    => $library_id ? $library_id : $settings['library_id'],
+			'library_id'    => null !== $library_id && '' !== $library_id ? $library_id : $settings['library_id'],
 			'api_key'       => $settings['api_key'],
 			'collection'    => $collection ? $collection : '',
 			'sort'          => $sort ? $sort : 'date',
@@ -229,9 +237,8 @@ class REST_Controller {
 	/**
 	 * GET /zotero-display/v1/items
 	 *
-	 * Fetches the full (cached) item set for the configured library/collection,
-	 * then applies search/filter/sort/pagination in-request so the underlying
-	 * Zotero data only needs to be re-fetched once per cache window.
+	 * Reads the local index only. Unknown sources return pending state without
+	 * starting synchronization, scheduling work, or contacting Zotero.
 	 *
 	 * @param \WP_REST_Request $request Request object.
 	 * @return \WP_REST_Response|\WP_Error
@@ -245,6 +252,11 @@ class REST_Controller {
 				__( 'No Zotero library ID configured. Set one in Settings → Nature Zotero Publications, or on this block.', 'nature-zotero-publications' ),
 				array( 'status' => 400 )
 			);
+		}
+
+		$valid = Sync::validate_source_args( $query_args );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
 		}
 
 		$authorized = $this->authorize_source_request( $request, $query_args );
@@ -264,25 +276,6 @@ class REST_Controller {
 		$page               = max( 1, $requested_page ? (int) $requested_page : 1 );
 		$per_page           = max( 1, $requested_per_page ? (int) $requested_per_page : 100 );
 		$sync_result        = Sync::get_results(
-			$query_args,
-			array(
-				'search' => $search,
-				'type'   => $filter_type,
-				'year'   => $filter_year,
-				'author' => $filter_author,
-			),
-			$page,
-			$per_page,
-			$include_facets,
-			$include_authors
-		);
-
-		if ( false !== $sync_result ) {
-			return rest_ensure_response( $sync_result );
-		}
-
-		Sync::prime_first_batch( $query_args );
-		$sync_result = Sync::get_results(
 			$query_args,
 			array(
 				'search' => $search,
@@ -335,6 +328,11 @@ class REST_Controller {
 				__( 'No Zotero library ID configured.', 'nature-zotero-publications' ),
 				array( 'status' => 400 )
 			);
+		}
+
+		$valid = Sync::validate_source_args( $query_args );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
 		}
 
 		$authorized = $this->authorize_source_request( $request, $query_args );
