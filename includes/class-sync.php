@@ -26,6 +26,7 @@ class Sync {
 	const BATCH_TIME_LIMIT = 12;
 	const RETRY_DELAY      = 300;
 	const WRITE_BATCH_SIZE = 40;
+	const NETWORK_RETRIES  = 3;
 
 	/**
 	 * Register synchronization hooks and ensure the schema exists.
@@ -254,6 +255,18 @@ class Sync {
 			for ( $page_number = 0; $page_number < $max_pages; ++$page_number ) {
 				$page = Zotero_API::fetch_page( $args, (int) $state['next_start'], self::PAGE_SIZE );
 				if ( is_wp_error( $page ) ) {
+					if ( 'http_request_failed' === $page->get_error_code() ) {
+						$attempt = (int) ( $state['network_retries'] ?? 0 );
+						if ( $attempt < self::NETWORK_RETRIES ) {
+							$delay                    = MINUTE_IN_SECONDS * ( 2 ** $attempt );
+							$state['network_retries'] = $attempt + 1;
+							$state['retry_at']        = time() + $delay;
+							$state['updated_at']      = time();
+							self::set_state( $source_key, $state );
+							self::schedule_batch( $source_key, $delay );
+							return;
+						}
+					}
 					$error_data = $page->get_error_data();
 					if ( ! empty( $error_data['retry_after'] ) ) {
 						$state['retry_at'] = time() + (int) $error_data['retry_after'];
@@ -268,6 +281,8 @@ class Sync {
 					return;
 				}
 
+				$state['network_retries'] = 0;
+				$state['retry_at']        = 0;
 				if ( ! empty( $page['not_modified'] ) ) {
 					$state['status']     = 'complete';
 					$state['total']      = (int) ( $state['active_total'] ?? $state['total'] );

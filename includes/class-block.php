@@ -142,7 +142,7 @@ class Block {
 		$per_page           = max( 1, (int) $attributes['itemsPerPage'] );
 		$fragment_cache_key = self::fragment_cache_key( $query_args, $attributes, 1 );
 		if ( ! is_admin() && ! wp_is_rest_endpoint() ) {
-			Sync::ensure_scheduled( $query_args );
+			$sync_state = Sync::ensure_scheduled( $query_args );
 		}
 		$cached_fragment = get_transient( $fragment_cache_key );
 		if ( false !== $cached_fragment && is_string( $cached_fragment ) ) {
@@ -151,17 +151,9 @@ class Block {
 
 		$include_facets = $attributes['showStats'] || $attributes['showFilters'];
 		$sync_result    = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
-		$sync_state     = Sync::get_public_state( $query_args );
+		$sync_state     = $sync_state ?? Sync::get_public_state( $query_args );
 
-		// Server-rendered editor previews are REST requests too: never start syncs there.
-		if ( ! is_admin() && ! wp_is_rest_endpoint() ) {
-			if ( false === $sync_result ) {
-				$sync_state  = Sync::prime_first_batch( $query_args );
-				$sync_result = Sync::get_results( $query_args, array(), 1, $per_page, $include_facets, false );
-			} else {
-				$sync_state = Sync::ensure_scheduled( $query_args );
-			}
-		}
+		// The source was scheduled above. Never wait for Zotero while rendering HTML.
 
 		if ( false !== $sync_result ) {
 			$first_page  = $sync_result['items'];

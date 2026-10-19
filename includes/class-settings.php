@@ -93,8 +93,17 @@ class Settings {
 		if ( ! empty( $input['remove_api_key'] ) || defined( 'ZOTERO_DISPLAY_API_KEY' ) ) {
 			$output['api_key'] = '';
 		}
-		$output['library_type']  = ( isset( $input['library_type'] ) && 'group' === $input['library_type'] ) ? 'group' : 'user';
-		$output['library_id']    = isset( $input['library_id'] ) ? sanitize_text_field( $input['library_id'] ) : '';
+		$output['library_type'] = ( isset( $input['library_type'] ) && 'group' === $input['library_type'] ) ? 'group' : 'user';
+		$library_id             = $input['library_id'] ?? '';
+		if ( ! is_string( $library_id ) || ( '' !== $library_id && ! preg_match( '/\A[0-9]+\z/', $library_id ) ) ) {
+			add_settings_error(
+				self::OPTION_KEY,
+				'zotero_display_invalid_library_id',
+				__( 'The library ID must contain only digits, or be empty. The previous library ID has been retained.', 'nature-zotero-publications' )
+			);
+			$library_id = $stored['library_id'] ?? '';
+		}
+		$output['library_id']    = $library_id;
 		$output['cache_minutes'] = isset( $input['cache_minutes'] ) ? max( 1, absint( $input['cache_minutes'] ) ) : 60;
 
 		return $output;
@@ -222,7 +231,7 @@ class Settings {
 					<tr>
 						<th scope="row"><label for="zotero_library_id"><?php esc_html_e( 'Default Library / Group ID', 'nature-zotero-publications' ); ?></label></th>
 						<td>
-							<input type="text" id="zotero_library_id" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[library_id]" value="<?php echo esc_attr( $settings['library_id'] ); ?>" class="regular-text" />
+							<input type="text" inputmode="numeric" pattern="[0-9]+" id="zotero_library_id" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[library_id]" value="<?php echo esc_attr( $settings['library_id'] ); ?>" class="regular-text" />
 							<p class="description"><?php esc_html_e( 'Find your numeric user ID at zotero.org/settings/keys, or the group ID in your group library URL.', 'nature-zotero-publications' ); ?></p>
 						</td>
 					</tr>
