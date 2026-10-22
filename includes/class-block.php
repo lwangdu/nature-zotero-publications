@@ -18,7 +18,7 @@ class Block {
 	const FRAGMENT_CACHE_PREFIX = 'zotero_display_fragment_';
 
 	/** Increment when cached block markup changes. */
-	const FRAGMENT_CACHE_VERSION = 4;
+	const FRAGMENT_CACHE_VERSION = 5;
 
 	/** Option containing fragment-cache transient keys for explicit invalidation. */
 	const FRAGMENT_CACHE_KEYS_OPTION = 'zotero_display_fragment_cache_keys';
@@ -139,7 +139,7 @@ class Block {
 				: '';
 		}
 
-		$per_page           = max( 1, (int) $attributes['itemsPerPage'] );
+		$per_page           = min( 100, max( 1, (int) $attributes['itemsPerPage'] ) );
 		$fragment_cache_key = self::fragment_cache_key( $query_args, $attributes, 1 );
 		if ( ! is_admin() && ! wp_is_rest_endpoint() ) {
 			$sync_state = Sync::ensure_scheduled( $query_args );
@@ -176,7 +176,8 @@ class Block {
 			: '';
 
 		$context = array(
-			'restUrl'           => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'itemsUrl'          => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/items' ) ),
+			'authorsUrl'        => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/authors' ) ),
 			'sourceSignature'   => Sync::source_signature( $query_args ),
 			'libraryType'       => $query_args['library_type'],
 			'libraryId'         => $query_args['library_id'],
@@ -459,7 +460,8 @@ class Block {
 
 		$context       = array(
 			'reloadOnFirstItems'   => true,
-			'restUrl'              => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/' ) ),
+			'itemsUrl'             => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/items' ) ),
+			'authorsUrl'           => esc_url_raw( rest_url( REST_Controller::NAMESPACE . '/authors' ) ),
 			'sourceSignature'      => Sync::source_signature( $query_args ),
 			'libraryType'          => $query_args['library_type'],
 			'libraryId'            => $query_args['library_id'],

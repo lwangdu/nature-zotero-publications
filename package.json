@@ -9,9 +9,20 @@
 		"format": "wp-scripts format",
 		"lint:js": "wp-scripts lint-js",
 		"lint:css": "wp-scripts lint-style",
+		"test:js": "node tests/request-url.cjs",
+		"test:php": "php tests/response-redaction.php && php tests/sync-diagnostics.php && php tests/audit-regressions.php",
 		"plugin-zip": "wp-scripts plugin-zip",
 		"packages-update": "wp-scripts packages-update"
 	},
+	"files": [
+		"build/",
+		"includes/",
+		"src/",
+		"nature-zotero-publications.php",
+		"uninstall.php",
+		"README.md",
+		"readme.txt"
+	],
 	"devDependencies": {
 		"@wordpress/scripts": "^30.0.0",
 		"@wordpress/interactivity": "^6.54.0"

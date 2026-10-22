@@ -8,6 +8,7 @@ import {
 	store,
 	withSyncEvent,
 } from '@wordpress/interactivity';
+import { endpointUrl } from './request-url';
 
 const delay = ( milliseconds ) =>
 	new Promise( ( resolve ) => setTimeout( resolve, milliseconds ) );
@@ -82,9 +83,7 @@ function* fetchItems( context, requestId ) {
 	} );
 
 	try {
-		const response = yield fetch(
-			`${ context.restUrl }items?${ params.toString() }`
-		);
+		const response = yield fetch( endpointUrl( context, 'items', params ) );
 		if ( ! response.ok ) {
 			throw new Error( 'Request failed' );
 		}
@@ -192,14 +191,14 @@ store( 'zotero-display', {
 				}
 				try {
 					const response = yield fetch(
-						`${ context.restUrl }items?${ params.toString() }`
+						endpointUrl( context, 'items', params )
 					);
 					if ( ! response.ok ) {
 						throw new Error( 'Request failed' );
 					}
 
 					const data = yield response.json();
-					retryDelay = 5000;
+					retryDelay = Math.min( 30000, retryDelay * 1.5 );
 					if (
 						data.sync?.ready ||
 						( context.reloadOnFirstItems && data.items?.length > 0 )
@@ -302,7 +301,7 @@ store( 'zotero-display', {
 
 			try {
 				const response = yield fetch(
-					`${ context.restUrl }authors?${ params.toString() }`
+					endpointUrl( context, 'authors', params )
 				);
 				if ( ! response.ok ) {
 					throw new Error( 'Request failed' );

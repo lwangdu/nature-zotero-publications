@@ -60,7 +60,7 @@ class Zotero_API {
 			),
 		);
 		if ( ! empty( $args['api_key'] ) ) {
-			$request_args['headers']['Authorization'] = 'Bearer ' . $args['api_key'];
+			$request_args['headers']['Zotero-API-Key'] = trim( $args['api_key'] );
 		}
 
 		if ( ! empty( $args['conditional_version'] ) && 0 === (int) $start ) {
@@ -75,6 +75,7 @@ class Zotero_API {
 		$backoff = max( 0, (int) wp_remote_retrieve_header( $response, 'backoff' ) );
 		$retry   = wp_remote_retrieve_header( $response, 'retry-after' );
 		$retry   = is_numeric( $retry ) ? (int) $retry : max( 0, (int) strtotime( (string) $retry ) - time() );
+		// The server deadline is a minimum wait, not a client-side timeout.
 		$backoff = max( $backoff, $retry );
 		if ( 429 === $code && ! $backoff ) {
 			$attempts = min( 8, 1 + (int) get_transient( 'zotero_display_backoff_attempts' ) );
@@ -98,8 +99,9 @@ class Zotero_API {
 					$code
 				),
 				array(
-					'status'      => $code,
-					'retry_after' => $backoff,
+					'status'       => $code,
+					'retry_after'  => $backoff,
+					'admin_detail' => self::diagnostic_response( $response, $args['api_key'] ?? '' ),
 				)
 			);
 		}
@@ -111,7 +113,7 @@ class Zotero_API {
 
 		$items = array();
 		foreach ( $body as $offset => $entry ) {
-			$normalized = self::normalize_item( $entry, $args );
+			$normalized = is_array( $entry ) ? self::normalize_item( $entry, $args ) : null;
 			if ( $normalized ) {
 				$items[ $offset ] = $normalized;
 			}
@@ -126,6 +128,77 @@ class Zotero_API {
 	}
 
 	/**
+	 * Reduce an error response to bounded, credential-redacted plain text.
+	 *
+	 * @param array  $response HTTP response.
+	 * @param string $api_key Request credential, used only for redaction.
+	 * @return string Safe administrator detail; never a public error message.
+	 */
+	public static function diagnostic_response( $response, $api_key = '' ) {
+		$body = (string) wp_remote_retrieve_body( $response );
+		$type = strtolower( (string) wp_remote_retrieve_header( $response, 'content-type' ) );
+		if ( str_contains( $type, 'html' ) || preg_match( '/<\s*(?:!doctype|html|body)/i', $body ) ) {
+			$details = array( __( 'Zotero response details', 'nature-zotero-publications' ) );
+			// Read only identifying headers, never cookies, authentication or locations.
+			foreach ( array( 'content-type', 'server', 'via', 'zotero-api-version' ) as $header ) {
+				$value = wp_remote_retrieve_header( $response, $header );
+				if ( is_string( $value ) && '' !== $value ) {
+					$details[] = $header . ': ' . self::redact_diagnostic_text( $value, $api_key );
+				}
+			}
+			if ( strlen( $body ) <= 32768 ) {
+				$found = false;
+				foreach ( array( 'title', 'h1', 'p' ) as $tag ) {
+					if ( preg_match( '~<' . $tag . '\b[^>]*>(.*?)</' . $tag . '\s*>~is', $body, $match ) ) {
+						$found     = true;
+						$details[] = $tag . ': ' . self::redact_diagnostic_text( $match[1], $api_key );
+					}
+				}
+				if ( ! $found ) {
+					$details[] = 'body: ' . self::redact_diagnostic_text( $body, $api_key );
+				}
+			} else {
+				$details[] = __( 'HTML body omitted because it exceeds the diagnostic size limit.', 'nature-zotero-publications' );
+			}
+			return implode( ' | ', $details );
+		}
+		if ( strlen( $body ) > 4096 ) {
+			return __( 'The error response was too large to display safely.', 'nature-zotero-publications' );
+		}
+		$json = json_decode( $body, true );
+		if ( is_array( $json ) ) {
+			$body = $json['message'] ?? $json['error'] ?? '';
+			$body = is_string( $body ) ? $body : '';
+		}
+		return self::redact_diagnostic_text( $body, $api_key );
+	}
+
+	/**
+	 * Strip markup and redact credentials before limiting diagnostic text.
+	 *
+	 * @param string $body Diagnostic text.
+	 * @param string $api_key Credential to remove.
+	 * @return string Plain redacted text.
+	 */
+	private static function redact_diagnostic_text( $body, $api_key ) {
+		if ( strlen( $body ) > 32768 ) {
+			return __( 'Diagnostic value omitted because it exceeds the size limit.', 'nature-zotero-publications' );
+		}
+		$body = html_entity_decode( rawurldecode( $body ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		$body = wp_strip_all_tags( $body );
+		if ( '' !== $api_key ) {
+			$body = str_replace( array( $api_key, base64_encode( $api_key ) ), '[redacted]', $body );
+		}
+		$body = preg_replace( '~https?://[^\s<>]+~i', '[URL removed]', $body );
+		$body = preg_replace( '/(?:authorization|zotero-api-key|api[_ -]?key|token|password|cookie)\s*[:=]\s*[^\r\n]+/i', '[credential removed]', $body );
+		$body = preg_replace( '/[A-Za-z0-9_+\/=-]{24,}/', '[token removed]', $body );
+		$body = preg_replace( '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email removed]', $body );
+		$body = preg_replace( '/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/', '[IP removed]', $body );
+		$body = sanitize_text_field( $body );
+		return '' !== $body ? mb_substr( $body, 0, 400, 'UTF-8' ) : __( 'No plain-text explanation was returned.', 'nature-zotero-publications' );
+	}
+
+	/**
 	 * Normalize a raw Zotero item into the shape our block expects.
 	 *
 	 * @param array $entry Raw Zotero item entry.
@@ -133,7 +206,18 @@ class Zotero_API {
 	 * @return array|null
 	 */
 	private static function normalize_item( array $entry, array $args ) {
-		$data = isset( $entry['data'] ) ? $entry['data'] : array();
+		$data = isset( $entry['data'] ) && is_array( $entry['data'] ) ? $entry['data'] : array();
+		foreach ( array( 'title', 'date', 'DOI', 'url', 'itemType', 'abstractNote', 'publicationTitle', 'bookTitle', 'citationKey', 'extra' ) as $field ) {
+			if ( isset( $data[ $field ] ) && ! is_string( $data[ $field ] ) ) {
+				$data[ $field ] = '';
+			}
+		}
+		$tags = array();
+		foreach ( is_array( $data['tags'] ?? null ) ? $data['tags'] : array() as $tag ) {
+			if ( is_array( $tag ) && isset( $tag['tag'] ) && is_string( $tag['tag'] ) ) {
+				$tags[] = $tag['tag'];
+			}
+		}
 		if ( ! empty( $data['parentItem'] ) ) {
 			return null;
 		}
@@ -141,6 +225,14 @@ class Zotero_API {
 		$creators = array();
 		if ( ! empty( $data['creators'] ) && is_array( $data['creators'] ) ) {
 			foreach ( $data['creators'] as $creator ) {
+				if ( ! is_array( $creator ) ) {
+					continue;
+				}
+				foreach ( array( 'name', 'lastName', 'firstName' ) as $field ) {
+					if ( isset( $creator[ $field ] ) && ! is_string( $creator[ $field ] ) ) {
+						$creator[ $field ] = '';
+					}
+				}
 				if ( ! empty( $creator['name'] ) ) {
 					$creators[] = $creator['name'];
 				} elseif ( ! empty( $creator['lastName'] ) ) {
@@ -153,8 +245,8 @@ class Zotero_API {
 			}
 		}
 
-		$item_key    = isset( $entry['key'] ) ? $entry['key'] : '';
-		$zotero_link = isset( $entry['links']['alternate']['href'] ) ? esc_url_raw( $entry['links']['alternate']['href'] ) : '';
+		$item_key    = isset( $entry['key'] ) && is_string( $entry['key'] ) ? $entry['key'] : '';
+		$zotero_link = isset( $entry['links']['alternate']['href'] ) && is_string( $entry['links']['alternate']['href'] ) ? esc_url_raw( $entry['links']['alternate']['href'] ) : '';
 
 		if ( ! $zotero_link ) {
 			$library_segment = ( 'group' === $args['library_type'] ) ? 'groups' : 'users';
@@ -167,7 +259,7 @@ class Zotero_API {
 		}
 
 		$doi          = isset( $data['DOI'] ) ? self::normalize_doi( $data['DOI'] ) : '';
-		$doi_url      = $doi ? esc_url_raw( 'https://doi.org/' . $doi ) : '';
+		$doi_url      = $doi ? esc_url_raw( 'https://doi.org/' . implode( '/', array_map( 'rawurlencode', explode( '/', $doi ) ) ) ) : '';
 		$source_url   = ! empty( $data['url'] ) ? esc_url_raw( $data['url'] ) : '';
 		$external_url = $source_url ? $source_url : $doi_url;
 		$citation_key = self::extract_citation_key( $data );
@@ -189,7 +281,7 @@ class Zotero_API {
 			'abstract'        => isset( $data['abstractNote'] ) && is_string( $data['abstractNote'] ) ? $data['abstractNote'] : '',
 			'zotero_link'     => $zotero_link,
 			'external_url'    => $external_url,
-			'tags'            => isset( $data['tags'] ) ? wp_list_pluck( $data['tags'], 'tag' ) : array(),
+			'tags'            => $tags,
 			'publication'     => isset( $data['publicationTitle'] ) ? $data['publicationTitle'] : ( isset( $data['bookTitle'] ) ? $data['bookTitle'] : '' ),
 		);
 	}
@@ -252,21 +344,29 @@ class Zotero_API {
 	}
 
 	/**
-	 * Clear every transient this plugin has created.
-	 *
-	 * Uses a direct DB query since WP core has no "delete by prefix" helper for transients.
+	 * Clear cached publications through cache-aware APIs, retaining API cooldowns.
 	 */
 	public static function clear_all_caches() {
 		global $wpdb;
-
-		$like = $wpdb->esc_like( '_transient_' . ZOTERO_DISPLAY_TRANSIENT_PREFIX ) . '%';
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- WordPress has no API for deleting transients by prefix.
-
-		$like_timeout = $wpdb->esc_like( '_transient_timeout_' . ZOTERO_DISPLAY_TRANSIENT_PREFIX ) . '%';
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $like_timeout ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- WordPress has no API for deleting transient timeouts by prefix.
-
-		if ( wp_using_ext_object_cache() ) {
-			wp_cache_flush_group( ZOTERO_DISPLAY_CACHE_GROUP );
+		Block::clear_fragment_cache();
+		// Enumerate bounded cache slots for each registered source, including Redis transients.
+		$names = $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( Sync::STATE_PREFIX ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Enumerate plugin-owned source state.
+		foreach ( $names as $name ) {
+			$key = substr( $name, strlen( Sync::STATE_PREFIX ) );
+			foreach ( array( 'results', 'authors', 'stats' ) as $kind ) {
+				for ( $slot = 0; $slot < 32; ++$slot ) {
+					delete_transient( 'zotero_display_' . $kind . '_' . $key . '_' . $slot );
+				}
+			}
+			delete_transient( 'zotero_display_schedule_error_' . $key );
+		}
+		// Clean legacy database transients, without deleting Zotero's rate-limit state.
+		$names = $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( '_transient_' . ZOTERO_DISPLAY_TRANSIENT_PREFIX ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Discover legacy plugin transients for API-based deletion.
+		foreach ( $names as $name ) {
+			$key = substr( $name, strlen( '_transient_' ) );
+			if ( ! in_array( $key, array( 'zotero_display_backoff', 'zotero_display_backoff_attempts' ), true ) ) {
+				delete_transient( $key );
+			}
 		}
 	}
 }

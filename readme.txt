@@ -36,6 +36,15 @@ Features include:
 * Query-aligned database indexes for faster large-library display and filters.
 * Plugin-owned data cleanup on uninstall.
 
+== External services ==
+
+This plugin connects to https://api.zotero.org to download publication metadata when a configured source synchronizes, including scheduled refreshes and administrator-triggered batches. Requests send the configured library type and ID, optional collection and item type, sorting and pagination parameters, API version, conditional library version when available, and API key when configured. Zotero also receives the WordPress server IP and HTTP client metadata. Visitor search/filter terms are processed locally and are not sent to Zotero. Publication links may take visitors to Zotero, DOI, or publisher websites when clicked.
+
+Service terms: https://www.zotero.org/support/terms/terms_of_service
+Privacy policy: https://www.zotero.org/support/privacy
+
+This plugin is independently developed and is not endorsed by Zotero.
+
 == Installation ==
 
 1. Upload the plugin files to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP through the WordPress Plugins screen.
@@ -157,10 +166,30 @@ Make sure User Library or Group Library matches the numeric ID. Private user or 
 
 * Initial release.
 
-== Index and request hardening ==
+= Index and request hardening =
 
 Cache-duration-only settings changes preserve the index. Connection changes clear it after saving. Leave the API key blank to retain it, or select Remove the saved API key. The ZOTERO_DISPLAY_API_KEY constant in wp-config.php overrides the saved key; saving settings removes the database copy. Clear Cache after rotating this constant.
 
 Titles and abstracts retain scientific notation and are escaped on display. Existing sources normalize again on their next stale refresh. Sync workers use expiring owner-checked locks and honor Zotero retry delays and conditional responses. Query caches are bounded and short-lived; hidden tabs pause polling. Visit the administration area after updating to apply schema upgrades.
 
 Publishing a bibliography makes indexed metadata, including hidden abstracts and tags, publicly queryable. Display controls are not privacy controls. Publish only metadata that may be public. Uninstall removes current and legacy sync locks as well as the existing plugin-owned data.
+
+= Administrator synchronization diagnostics =
+
+Settings > Nature Zotero Publications includes administrator-only synchronization diagnostics. It checks whether the publication tables are readable, shows saved source progress, sanitized errors, retry deadlines, and pending cron events. It reports rejected scheduling attempts made after this update. API keys, raw SQL, and raw transport error details are never displayed. Table readability does not establish write permission or full schema compatibility.
+
+Run one sync batch uses a capability and nonce-protected POST and processes at most one 100-item page for a known source. It preserves completed publications and respects locks, API cooldowns, and retry delays. It can take up to 20 seconds. The panel includes the valid default source and up to 100 recent stored source options; open a configured block on the frontend first if its override is missing. No WP Crontrol installation is needed. Refresh the settings page after a run to inspect progress. Missing or unreadable tables disable manual runs; inspect activation and database permissions before proceeding.
+
+The plugin records a bounded, redacted explanation for new HTTP failures. Explanations appear only in the administrator diagnostics panel, not public REST responses or frontend errors. For HTML responses, the panel shows redacted title, heading, first paragraph, and selected identifying headers (content-type, server, via, zotero-api-version). If those HTML elements are absent, a bounded redacted plain-text body is shown instead. Raw HTML, cookies, authorization headers, and redirect locations are not displayed. Old failures need a new manual batch after the retry deadline to capture an explanation.
+
+Outbound Zotero requests use the Zotero-API-Key header. Enter only the API key in settings, without a Bearer prefix or header name; surrounding whitespace is removed before sending.
+
+Operational notes: Clearing publication caches preserves Zotero cooldowns. Backoff and Retry-After deadlines are honored in full, including waits longer than one hour. Plain and pretty permalinks are supported. After rotating WordPress salts or deploying frontend changes, purge page/CDN caches so embedded source signatures and markup are refreshed.
+
+Public API requests are limited to 120 per minute per server-reported client IP, shared across items and authors; editors are exempt. Shared-IP visitors share this allowance. The limiter stores a count under a salted hash of the client IP and minute for up to 60 seconds; it does not store the raw IP. Configure the host to provide the actual client IP behind trusted proxies. The database-only counter is best-effort under concurrency; use host/WAF limits for strong abuse protection. Public requests cannot request the complete author facet; use bounded author autocomplete. Pagination is capped at 10,000 pages. Pending synchronization polling slows progressively to 30 seconds.
+
+Source retention: removing a block does not remove its indexed source because another page or cached block may still use it. Clear Zotero Cache removes all source indexes and they rebuild when rendered; uninstall permanently removes plugin data. Do not use automatic age-based deletion as a substitute for checking source usage.
+
+API credentials: prefer the server-side ZOTERO_DISPLAY_API_KEY constant where hosting permits it. Saved settings are not autoloaded; existing installations are updated when an administrator visits settings.
+
+Readable JavaScript is included in src/ in the ZIP. Developer tooling and tests are available from https://github.com/lwangdu/nature-zotero-publications; clone the repository to run the documented npm tests and build commands.

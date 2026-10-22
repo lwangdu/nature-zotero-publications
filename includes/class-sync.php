@@ -187,30 +187,6 @@ class Sync {
 	}
 
 	/**
-	 * Start a source sync and run the first bounded batch during the current request.
-	 *
-	 * This avoids showing only a "preparing" state on the first page view after
-	 * a cache clear, while still keeping larger libraries on the background
-	 * worker path after the first batch.
-	 *
-	 * @param array $args Zotero source query arguments.
-	 * @return array Current sync state after the first batch attempt.
-	 */
-	public static function prime_first_batch( array $args ) {
-		$args       = self::normalize_source_args( $args );
-		$source_key = self::source_key( $args );
-		$state      = self::ensure_scheduled( $args );
-
-		if ( 'syncing' === $state['status'] && empty( $state['processed'] ) ) {
-			// The browser only needs the first indexed page; leave the rest to cron.
-			self::run_batch( $source_key, 1 );
-			$state = self::get_state( $source_key );
-		}
-
-		return $state;
-	}
-
-	/**
 	 * Run a bounded number of Zotero pages for one source.
 	 *
 	 * @param string $source_key Source identifier.
@@ -244,7 +220,7 @@ class Sync {
 			$settings        = Settings::get_settings();
 			$args            = $state['source_args'];
 			$args['api_key'] = $settings['api_key'];
-			if ( ! empty( $state['ready'] ) && 1 === (int) ( $state['normalization_version'] ?? 0 ) ) {
+			if ( ! empty( $state['ready'] ) && 2 === (int) ( $state['normalization_version'] ?? 0 ) ) {
 				$args['conditional_version'] = (int) $state['active_version'];
 			}
 			$last_modified_version = isset( $state['last_modified_version'] ) ? (int) $state['last_modified_version'] : 0;
@@ -274,13 +250,15 @@ class Sync {
 						self::schedule_batch( $source_key, (int) $error_data['retry_after'] );
 						return;
 					}
-					$state['status']     = 'error';
-					$state['error']      = $page->get_error_message();
-					$state['updated_at'] = time();
+					$state['status']       = 'error';
+					$state['error']        = $page->get_error_message();
+					$state['admin_detail'] = is_array( $error_data ) ? ( $error_data['admin_detail'] ?? '' ) : '';
+					$state['updated_at']   = time();
 					self::set_state( $source_key, $state );
 					return;
 				}
 
+				$state['admin_detail']    = '';
 				$state['network_retries'] = 0;
 				$state['retry_at']        = 0;
 				if ( ! empty( $page['not_modified'] ) ) {
@@ -293,7 +271,7 @@ class Sync {
 					self::set_state( $source_key, $state );
 					return;
 				}
-				if ( 1 === (int) ( $state['normalization_version'] ?? 0 ) && ! empty( $state['ready'] ) && 0 === (int) $state['next_start'] && ! empty( $state['active_version'] ) && (int) $state['active_version'] === (int) $page['last_modified_version'] ) {
+				if ( 2 === (int) ( $state['normalization_version'] ?? 0 ) && ! empty( $state['ready'] ) && 0 === (int) $state['next_start'] && ! empty( $state['active_version'] ) && (int) $state['active_version'] === (int) $page['last_modified_version'] ) {
 					$state['status']       = 'complete';
 					$state['processed']    = (int) $page['total'];
 					$state['total']        = (int) $page['total'];
@@ -642,6 +620,12 @@ class Sync {
 				continue;
 			}
 
+			$json = wp_json_encode( $item, JSON_INVALID_UTF8_SUBSTITUTE );
+			if ( false === $json ) {
+				return new \WP_Error( 'zotero_invalid_item_json', __( 'A Zotero item could not be encoded for storage.', 'nature-zotero-publications' ) );
+			}
+			// Use the repaired strings for every column, not just the JSON payload.
+			$item        = json_decode( $json, true );
 			$storage_key = $sync_token . ':' . $item['key'];
 			$search_text = implode(
 				' ',
@@ -665,7 +649,7 @@ class Sync {
 				$item['item_type_label'],
 				$item['date_year'],
 				$search_text,
-				wp_json_encode( $item ),
+				$json,
 				$sync_token,
 				$now,
 			);
@@ -719,22 +703,30 @@ class Sync {
 		$column_sql      = implode( ', ', $columns );
 		$row_placeholder = '(' . implode( ', ', $formats ) . ')';
 
-		foreach ( array_chunk( $rows, self::WRITE_BATCH_SIZE ) as $chunk ) {
-			$placeholders = array_fill( 0, count( $chunk ), $row_placeholder );
-			$values       = array( $table );
-
-			foreach ( $chunk as $row ) {
-				$values = array_merge( $values, $row );
+		$prefix = $wpdb->prepare( 'REPLACE INTO %i', $table ) . ' (' . $column_sql . ') VALUES ';
+		$chunks = array();
+		$chunk  = array();
+		$bytes  = strlen( $prefix );
+		foreach ( $rows as $row ) {
+			$prepared = $wpdb->prepare( $row_placeholder, $row ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Fixed format list supplied by internal callers.
+			if ( strlen( $prepared ) + strlen( $prefix ) > 524288 ) {
+				return new \WP_Error( 'zotero_item_too_large', __( 'A Zotero index row exceeds the 512 KiB write limit. Reduce the item metadata before retrying.', 'nature-zotero-publications' ) );
 			}
-
-			$sql    = 'REPLACE INTO %i (' . $column_sql . ') VALUES ' . implode( ', ', $placeholders );
-			$result = $wpdb->query( $wpdb->prepare( $sql, $values ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Fixed columns and plugin-owned table; every row value is prepared.
-
+			if ( $chunk && ( count( $chunk ) >= self::WRITE_BATCH_SIZE || $bytes + strlen( $prepared ) + 2 > 524288 ) ) {
+				$chunks[] = $chunk;
+				$chunk    = array();
+				$bytes    = strlen( $prefix );
+			}
+			$chunk[] = $prepared;
+			$bytes  += strlen( $prepared ) + 2;
+		}
+		if ( $chunk ) {
+			$chunks[] = $chunk;
+		}
+		foreach ( $chunks as $chunk ) {
+			$result = $wpdb->query( $prefix . implode( ', ', $chunk ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Identifier and all row values prepared above, bounded by actual SQL bytes.
 			if ( false === $result ) {
-				return new \WP_Error(
-					'zotero_display_index_write_failed',
-					__( 'Unable to update the local Zotero publication index.', 'nature-zotero-publications' )
-				);
+				return new \WP_Error( 'zotero_display_index_write_failed', __( 'Unable to update the local Zotero publication index.', 'nature-zotero-publications' ) );
 			}
 		}
 
@@ -755,7 +747,7 @@ class Sync {
 		$state['ready']                 = true;
 		$state['active_token']          = $state['sync_token'];
 		$state['active_version']        = (int) $state['last_modified_version'];
-		$state['normalization_version'] = 1;
+		$state['normalization_version'] = 2;
 		$state['active_total']          = (int) $state['total'];
 		$state['last_sync']             = time();
 		$state['updated_at']            = time();
@@ -942,8 +934,98 @@ class Sync {
 	private static function schedule_batch( $source_key, $delay = 1 ) {
 		$event_args = array( $source_key );
 		if ( ! wp_next_scheduled( self::HOOK, $event_args ) ) {
-			wp_schedule_single_event( time() + max( 1, (int) $delay ), self::HOOK, $event_args );
+			$result = wp_schedule_single_event( time() + max( 1, (int) $delay ), self::HOOK, $event_args, true );
+
+			if ( is_wp_error( $result ) || false === $result ) {
+				set_transient( 'zotero_display_schedule_error_' . $source_key, 1, HOUR_IN_SECONDS );
+			} else {
+				delete_transient( 'zotero_display_schedule_error_' . $source_key );
+			}
 		}
+	}
+
+	/**
+	 * Read bounded administrator diagnostics without starting synchronization.
+	 *
+	 * @return array Safe table and source details.
+	 */
+	public static function diagnostics() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return array();
+		}
+		global $wpdb;
+		$tables = array();
+		foreach ( array( self::items_table(), self::creators_table() ) as $table ) {
+			// Probe the actual table, rather than trusting the stored schema version.
+			$previous = $wpdb->suppress_errors();
+			$wpdb->get_var( $wpdb->prepare( 'SELECT 1 FROM %i LIMIT 1', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Administrator-only table health probe.
+			$tables[ $table ] = empty( $wpdb->last_error );
+			$wpdb->suppress_errors( $previous );
+		}
+		$args    = self::normalize_source_args( Settings::get_settings() );
+		$sources = array();
+		if ( ! is_wp_error( self::validate_source_args( $args ) ) ) {
+			$sources[ self::source_key( $args ) ] = $args;
+		}
+		$names = $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s ORDER BY option_id DESC LIMIT 100', $wpdb->options, $wpdb->esc_like( self::STATE_PREFIX ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Bounded administrator-only inventory of plugin state.
+		foreach ( $names as $name ) {
+			$key   = substr( $name, strlen( self::STATE_PREFIX ) );
+			$state = self::get_state( $key );
+			if ( ! empty( $state['source_args'] ) ) {
+				$args = self::normalize_source_args( $state['source_args'] );
+				if ( ! is_wp_error( self::validate_source_args( $args ) ) && self::source_key( $args ) === $key ) {
+					$sources[ $key ] = $args;
+				}
+			}
+		}
+		$rows = array();
+		foreach ( $sources as $key => $args ) {
+			$state = self::get_state( $key );
+			// Do not expose arbitrary transport messages, URLs, SQL, or credentials.
+			$error = '';
+			if ( ! empty( $state['error'] ) ) {
+				$error = __( 'Synchronization failed. Check Zotero access and database health.', 'nature-zotero-publications' );
+				if ( preg_match( '/HTTP ([0-9]{3})/', $state['error'], $match ) ) {
+					$error = 'HTTP ' . $match[1];
+				} elseif ( str_contains( $state['error'], 'cURL error 28' ) ) {
+					$error = __( 'Zotero request timed out.', 'nature-zotero-publications' );
+				}
+			}
+			$rows[ $key ] = array(
+				'args'           => $args,
+				'status'         => $state['status'],
+				'processed'      => (int) $state['processed'],
+				'total'          => (int) $state['total'],
+				'error'          => $error,
+				'admin_detail'   => 'error' === $state['status'] ? ( $state['admin_detail'] ?? '' ) : '',
+				'next'           => wp_next_scheduled( self::HOOK, array( $key ) ),
+				'retry'          => 'error' === $state['status'] ? (int) $state['updated_at'] + self::RETRY_DELAY : (int) ( $state['retry_at'] ?? 0 ),
+				'schedule_error' => (bool) get_transient( 'zotero_display_schedule_error_' . $key ),
+			);
+		}
+		return array(
+			'tables'  => $tables,
+			'sources' => $rows,
+		);
+	}
+
+	/**
+	 * Run one page for a source from the administrator diagnostic inventory.
+	 *
+	 * @param string $key Source identifier.
+	 * @return void
+	 */
+	public static function diagnostic_batch( $key ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$report = self::diagnostics();
+		if ( empty( $report['sources'][ $key ] ) || in_array( false, $report['tables'], true ) ) {
+			return;
+		}
+		self::ensure_scheduled( $report['sources'][ $key ]['args'] );
+		self::run_batch( $key, 1 );
+		Block::clear_fragment_cache();
 	}
 
 	/**

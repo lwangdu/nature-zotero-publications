@@ -252,3 +252,31 @@ Queries and author suggestions use bounded cache slots (32 per source and query 
 **Publication privacy:** publishing a bibliography exposes its indexed metadata through signed public REST queries, including abstracts and tags even when display controls hide them. Those controls are presentation settings, not access controls. Only publish sources whose metadata may be public; use a separate public Zotero collection for confidential libraries.
 
 Full-text search, a single index supporting local sorts, incremental Zotero synchronization, and major build-tool upgrades remain separate architectural or maintenance work. Query caches reduce repeated work but do not replace host-level request rate limits.
+
+### Administrator synchronization diagnostics
+
+Settings > Nature Zotero Publications includes administrator-only synchronization diagnostics. It checks whether the publication tables are readable, shows saved source progress, sanitized errors, retry deadlines, and pending cron events. It reports rejected scheduling attempts made after this update. API keys, raw SQL, and raw transport error details are never displayed. Table readability does not establish write permission or full schema compatibility.
+
+Run one sync batch uses a capability and nonce-protected POST and processes at most one 100-item page for a known source. It preserves completed publications and respects locks, API cooldowns, and retry delays. It can take up to 20 seconds. The panel includes the valid default source and up to 100 recent stored source options; open a configured block on the frontend first if its override is missing. No WP Crontrol installation is needed. Refresh the settings page after a run to inspect progress. Missing or unreadable tables disable manual runs; inspect activation and database permissions before proceeding.
+
+The plugin records a bounded, redacted explanation for new HTTP failures. Explanations appear only in the administrator diagnostics panel, not public REST responses or frontend errors. For HTML responses, the panel shows redacted title, heading, first paragraph, and selected identifying headers (content-type, server, via, zotero-api-version). If those HTML elements are absent, a bounded redacted plain-text body is shown instead. Raw HTML, cookies, authorization headers, and redirect locations are not displayed. Old failures need a new manual batch after the retry deadline to capture an explanation.
+
+Outbound Zotero requests use the Zotero-API-Key header. Enter only the API key in settings, without a Bearer prefix or header name; surrounding whitespace is removed before sending.
+
+### Regression tests
+
+Run `npm run test:php` with PHP 8.3 or newer and the mbstring extension. The standalone CLI fixtures in `tests/` cover response redaction, diagnostic access controls, table-health reporting, and scheduling-failure reporting. They use dummy credentials and in-memory WordPress/database stubs, with no network calls or site-data changes. Each fixture runs in a separate PHP process; do not load them into WordPress. Exceptions produce a nonzero exit status and stop the command.
+
+These tests do not verify actual WordPress nonce validation, MariaDB behavior, cron execution, or live Zotero authentication. Runtime checks remain necessary. The current `npm run plugin-zip` packaging rules exclude `tests/`.
+
+Operational notes: Clearing publication caches preserves Zotero cooldowns. Backoff and Retry-After deadlines are honored in full, including waits longer than one hour. Plain and pretty permalinks are supported. After rotating WordPress salts or deploying frontend changes, purge page/CDN caches so embedded source signatures and markup are refreshed.
+
+Public API requests are limited to 120 per minute per server-reported client IP, shared across items and authors; editors are exempt. Shared-IP visitors share this allowance. The limiter stores a count under a salted hash of the client IP and minute for up to 60 seconds; it does not store the raw IP. Configure the host to provide the actual client IP behind trusted proxies. The database-only counter is best-effort under concurrency; use host/WAF limits for strong abuse protection. Public requests cannot request the complete author facet; use bounded author autocomplete. Pagination is capped at 10,000 pages. Pending synchronization polling slows progressively to 30 seconds.
+
+Source retention: removing a block does not remove its indexed source because another page or cached block may still use it. Clear Zotero Cache removes all source indexes and they rebuild when rendered; uninstall permanently removes plugin data. Do not use automatic age-based deletion as a substitute for checking source usage.
+
+API credentials: prefer the server-side ZOTERO_DISPLAY_API_KEY constant where hosting permits it. Saved settings are not autoloaded; existing installations are updated when an administrator visits settings.
+
+Readable JavaScript is included in src/ in the ZIP. Developer tooling and tests are available from https://github.com/lwangdu/nature-zotero-publications; clone the repository to run the documented npm tests and build commands.
+
+Audit regression coverage: `npm run test:js` verifies plain/pretty REST URL construction and legacy cached markup. `npm run test:php` also checks cooldown preservation, cache slot deletion, malformed metadata, DOI encoding, byte-bounded writes, and the public request allowance. These use isolated stubs rather than live Redis/MariaDB. Existing indexed items adopt the updated normalization on the next stale refresh; the completed index remains readable while it refreshes.

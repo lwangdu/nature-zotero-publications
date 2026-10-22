@@ -37,7 +37,7 @@ function zotero_display_uninstall_site() {
 	$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $wpdb->prefix . 'zotero_display_creators' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Plugin-owned table identifier is prepared.
 	$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $wpdb->prefix . 'zotero_display_items' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Plugin-owned table identifier is prepared.
 
-	if ( function_exists( 'wp_cache_flush_group' ) ) {
+	if ( function_exists( 'wp_cache_flush_group' ) && wp_cache_supports( 'flush_group' ) ) {
 		wp_cache_flush_group( 'zotero_display' );
 	}
 }

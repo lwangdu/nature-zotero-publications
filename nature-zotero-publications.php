@@ -70,7 +70,9 @@ function zotero_display_activate() {
 				'library_type'  => 'user', // Default to a user library.
 				'library_id'    => '',
 				'cache_minutes' => 60,
-			)
+			),
+			'',
+			false
 		);
 	}
 

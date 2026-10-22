@@ -202,7 +202,7 @@ linting, and builds cannot establish.
 
 The documented behavior is:
 
-- Pending-sync responses wait five seconds before retrying.
+- Pending-sync responses progressively increase the retry delay from five seconds to at most 30 seconds.
 - Failed HTTP/network requests back off exponentially, up to 60 seconds.
 - Hidden tabs make no polling requests and check visibility every 30 seconds.
 - A ready response reloads once and stops polling.

@@ -43,6 +43,7 @@ class Settings {
 		add_action( 'add_option_' . self::OPTION_KEY, array( $this, 'settings_added' ), 10, 2 );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_post_zotero_display_diagnostic_batch', array( $this, 'handle_diagnostic_batch' ) );
 		add_action( 'admin_post_zotero_display_clear_cache', array( $this, 'handle_clear_cache' ) );
 	}
 
@@ -67,6 +68,7 @@ class Settings {
 	 * @return void
 	 */
 	public function register_settings() {
+		wp_set_option_autoload_values( array( self::OPTION_KEY => false ) );
 		register_setting(
 			'zotero_display_settings_group',
 			self::OPTION_KEY,
@@ -245,6 +247,7 @@ class Settings {
 				<?php submit_button(); ?>
 			</form>
 
+			<?php $this->render_diagnostics(); ?>
 			<hr />
 			<h2><?php esc_html_e( 'Cache', 'nature-zotero-publications' ); ?></h2>
 			<p><?php esc_html_e( 'Force-refresh all cached Zotero data immediately (otherwise it refreshes automatically based on the cache duration above).', 'nature-zotero-publications' ); ?></p>
@@ -254,6 +257,68 @@ class Settings {
 				<?php submit_button( __( 'Clear Zotero Cache', 'nature-zotero-publications' ), 'secondary' ); ?>
 			</form>
 		</div>
+		<?php
+	}
+	/**
+	 * Process an administrator-only manual batch without bypassing retry limits.
+	 *
+	 * @return void
+	 */
+	public function handle_diagnostic_batch() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'nature-zotero-publications' ) );
+		}
+		check_admin_referer( 'zotero_display_diagnostic_batch' );
+		$key = isset( $_POST['source'] ) && is_string( $_POST['source'] ) ? sanitize_key( wp_unslash( $_POST['source'] ) ) : '';
+		Sync::diagnostic_batch( $key );
+		wp_safe_redirect( admin_url( 'options-general.php?page=nature-zotero-publications#zotero-diagnostics' ) );
+		exit;
+	}
+
+	/**
+	 * Display diagnostics without secrets or raw database errors.
+	 *
+	 * @return void
+	 */
+	private function render_diagnostics() {
+		$report   = Sync::diagnostics();
+		$settings = self::get_settings();
+		?>
+		<hr />
+		<h2 id="zotero-diagnostics"><?php esc_html_e( 'Synchronization diagnostics', 'nature-zotero-publications' ); ?></h2>
+		<p><?php esc_html_e( 'This panel shows the default source and up to 100 recently stored block sources. Open the frontend page to register a block override. Refresh this settings page to see updated results.', 'nature-zotero-publications' ); ?></p>
+		<p><?php echo esc_html( empty( $settings['api_key'] ) ? __( 'API key: not configured.', 'nature-zotero-publications' ) : __( 'API key: configured (permissions not verified).', 'nature-zotero-publications' ) ); ?></p>
+		<p><?php echo esc_html( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? __( 'Traffic-triggered WP-Cron is disabled. A host scheduler is required.', 'nature-zotero-publications' ) : __( 'Traffic-triggered WP-Cron is enabled; this does not verify execution.', 'nature-zotero-publications' ) ); ?></p>
+		<ul>
+		<?php foreach ( $report['tables'] as $table => $healthy ) : ?>
+			<li><code><?php echo esc_html( $table ); ?></code>: <?php echo esc_html( $healthy ? __( 'Readable', 'nature-zotero-publications' ) : __( 'Missing or unreadable', 'nature-zotero-publications' ) ); ?></li>
+		<?php endforeach; ?>
+		</ul>
+		<?php if ( empty( $report['sources'] ) ) : ?>
+			<p><?php esc_html_e( 'No valid source found. Save a numeric default library ID above or open a configured block on the frontend.', 'nature-zotero-publications' ); ?></p>
+		<?php endif; ?>
+		<?php foreach ( $report['sources'] as $key => $row ) : ?>
+			<h3><?php echo esc_html( $row['args']['library_type'] . ' / ' . $row['args']['library_id'] . ' / ' . $row['args']['collection'] . ' / ' . $row['args']['sort'] . ' / ' . $row['args']['direction'] ); ?></h3>
+			<p><?php echo esc_html( sprintf( /* translators: 1: status, 2: processed count, 3: total count. */ __( 'Status: %1$s. Processed: %2$d / %3$d.', 'nature-zotero-publications' ), $row['status'], $row['processed'], $row['total'] ) ); ?></p>
+			<p><?php esc_html_e( 'Next scheduled batch:', 'nature-zotero-publications' ); ?> <?php echo esc_html( $row['next'] ? wp_date( 'Y-m-d H:i:s T', $row['next'] ) : __( 'None', 'nature-zotero-publications' ) ); ?></p>
+			<p><?php esc_html_e( 'Retry not before:', 'nature-zotero-publications' ); ?> <?php echo esc_html( $row['retry'] ? wp_date( 'Y-m-d H:i:s T', $row['retry'] ) : __( 'No pending retry deadline', 'nature-zotero-publications' ) ); ?></p>
+			<?php if ( $row['schedule_error'] ) : ?>
+				<p><?php esc_html_e( 'WordPress rejected the last scheduling attempt.', 'nature-zotero-publications' ); ?></p>
+			<?php endif; ?>
+			<?php if ( $row['error'] ) : ?>
+				<p><?php echo esc_html( $row['error'] ); ?></p>
+			<?php endif; ?>
+			<?php if ( $row['admin_detail'] ) : ?>
+				<p><strong><?php esc_html_e( 'Response explanation:', 'nature-zotero-publications' ); ?></strong> <?php echo esc_html( $row['admin_detail'] ); ?></p>
+			<?php endif; ?>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="zotero_display_diagnostic_batch" />
+				<input type="hidden" name="source" value="<?php echo esc_attr( $key ); ?>" />
+				<?php wp_nonce_field( 'zotero_display_diagnostic_batch' ); ?>
+				<?php submit_button( __( 'Run one sync batch', 'nature-zotero-publications' ), 'secondary', 'submit', false, in_array( false, $report['tables'], true ) ? array( 'disabled' => 'disabled' ) : array() ); ?>
+			</form>
+		<?php endforeach; ?>
+		<p><?php esc_html_e( 'A manual run processes at most 100 items and may wait up to 20 seconds for Zotero. Locks and retry delays remain enforced; a fresh completed source does not need a new batch. Existing publications are preserved.', 'nature-zotero-publications' ); ?></p>
 		<?php
 	}
 }

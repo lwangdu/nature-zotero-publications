@@ -83,7 +83,7 @@ class REST_Controller {
 					),
 					'item_type'        => array(
 						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_key',
+						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'search'           => array(
 						'type'              => 'string',
@@ -107,6 +107,7 @@ class REST_Controller {
 						'type'    => 'integer',
 						'default' => 1,
 						'minimum' => 1,
+						'maximum' => 10000,
 					),
 					'per_page'         => array(
 						'type'    => 'integer',
@@ -156,7 +157,7 @@ class REST_Controller {
 					),
 					'item_type'        => array(
 						'type'              => 'string',
-						'sanitize_callback' => 'sanitize_key',
+						'sanitize_callback' => 'sanitize_text_field',
 					),
 					'source_signature' => array(
 						'type'              => 'string',
@@ -231,6 +232,19 @@ class REST_Controller {
 			);
 		}
 
+		// Use the server-provided address; never trust client-supplied forwarding headers.
+		$address = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'unknown';
+		$key     = 'zotero_display_rate_' . wp_hash( $address . ':' . (int) floor( time() / 60 ) );
+		if ( wp_using_ext_object_cache() ) {
+			wp_cache_add( $key, 0, ZOTERO_DISPLAY_CACHE_GROUP, 60 );
+			$count = wp_cache_incr( $key, 1, ZOTERO_DISPLAY_CACHE_GROUP );
+		} else {
+			$count = 1 + (int) get_transient( $key );
+			set_transient( $key, $count, 60 );
+		}
+		if ( $count > 120 ) {
+			return new \WP_Error( 'zotero_display_rate_limit', __( 'Too many publication requests. Please wait a minute and retry.', 'nature-zotero-publications' ), array( 'status' => 429 ) );
+		}
 		return true;
 	}
 
@@ -270,10 +284,10 @@ class REST_Controller {
 		$filter_author      = $request->get_param( 'filter_author' );
 		$include_facets     = $request->get_param( 'include_facets' );
 		$include_facets     = null === $include_facets || rest_sanitize_boolean( $include_facets );
-		$include_authors    = rest_sanitize_boolean( $request->get_param( 'include_authors' ) );
+		$include_authors    = current_user_can( 'edit_posts' ) && rest_sanitize_boolean( $request->get_param( 'include_authors' ) );
 		$requested_page     = $request->get_param( 'page' );
 		$requested_per_page = $request->get_param( 'per_page' );
-		$page               = max( 1, $requested_page ? (int) $requested_page : 1 );
+		$page               = min( 10000, max( 1, $requested_page ? (int) $requested_page : 1 ) );
 		$per_page           = max( 1, $requested_per_page ? (int) $requested_per_page : 100 );
 		$sync_result        = Sync::get_results(
 			$query_args,
