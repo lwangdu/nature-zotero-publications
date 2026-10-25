@@ -27,6 +27,38 @@ Current version: **1.0.7**
 - Server-only handling of private Zotero API keys
 - Plugin-owned data cleanup on uninstall
 
+## Frequently Asked Questions
+
+### Should I select Group Library or User Library?
+
+Choose **Group Library** for a shared Zotero group, or **User Library** for an individual account’s library. The type must match the numeric ID. Group Library is the default for new configurations; existing saved choices are preserved. Blocks inherit the plugin settings unless you set an override.
+
+### Where do I find my library or group ID?
+
+For a group library, copy the numeric group ID from its Zotero group URL. For a user library, find your numeric user ID at [Zotero API Keys](https://www.zotero.org/settings/keys). Enter only the digits in **Default Library / Group ID**, not a URL, username, or API key.
+
+### When do I need a Zotero API key?
+
+Publicly readable libraries can be displayed without a key. Private libraries require a valid key with read permission for the selected user or group library. Enter only the raw key, without quotes, a `Bearer` prefix, or a header name. Never share your key in screenshots or support messages.
+
+### Why is the API key field blank after saving?
+
+The field stays blank intentionally so the saved key is not displayed. Check **Synchronization diagnostics** for “API key: configured”; this confirms a key is available, but does not verify its permissions. Leaving the field blank keeps the saved key. Select **Remove the saved API key** to delete it. If your host defines `ZOTERO_DISPLAY_API_KEY`, that value overrides the saved key.
+
+### Why does the page say “Synchronizing publications”?
+
+The plugin is waiting for its local publication index to populate. Open the published page to initialize its source; editor previews alone do not start synchronization. Background batches need working WordPress Cron. If progress stops, open **Settings → Nature Zotero Publications → Synchronization diagnostics**, check the error and retry deadline, and use **Run one sync batch** when eligible. Refresh settings to see the result; manual runs still respect retry delays.
+
+### What do HTTP 400 and 403 errors mean?
+
+HTTP 400 indicates a rejected request; HTTP 403 indicates access was refused. Check the **Response explanation** in Synchronization diagnostics rather than assuming a database problem. Verify the library type and ID first. “Invalid key” means the supplied key was rejected; check the saved key and any overriding constant. For “Forbidden,” check library visibility and key permissions. An HTML error may also come from a hosting intermediary. Do not repeatedly clear the cache: it removes the local index and does not fix credentials or bypass retry delays.
+
+### Will updating the plugin preserve my settings and publications?
+
+Replacing the installed plugin through WordPress’s upload/update flow preserves saved settings and the local publication index. Back up the site before updating, and do not delete the plugin first: deletion runs uninstall cleanup and removes plugin-owned data. Changing connection settings or selecting **Clear Zotero Cache** also clears the local index and requires synchronization again. The Group Library default does not override an existing saved User Library choice.
+
+For more help, see [Troubleshooting](#troubleshooting).
+
 ## How synchronization works
 
 Zotero limits an API response to 100 items. The plugin uses a resumable background synchronization system in `includes/class-sync.php`:
@@ -54,7 +86,7 @@ The cache-duration setting controls when a completed source becomes eligible for
 1. Upload the plugin to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP in WordPress.
 2. Activate **Nature Zotero Publications**.
 3. Open **Settings → Nature Zotero Publications**.
-4. Select the default library type: **User Library** or **Group Library**.
+4. Select the default library type: **User Library** or **Group Library**. Group Library is the default for new configurations; existing saved choices are preserved.
 5. Enter the numeric Zotero user ID or group ID.
 6. Enter an API key only when the library is private.
 7. Choose the cache duration in minutes and save the settings.

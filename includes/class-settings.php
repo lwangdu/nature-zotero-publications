@@ -95,7 +95,11 @@ class Settings {
 		if ( ! empty( $input['remove_api_key'] ) || defined( 'ZOTERO_DISPLAY_API_KEY' ) ) {
 			$output['api_key'] = '';
 		}
-		$output['library_type'] = ( isset( $input['library_type'] ) && 'group' === $input['library_type'] ) ? 'group' : 'user';
+		$library_type = $input['library_type'] ?? '';
+		if ( ! in_array( $library_type, array( 'user', 'group' ), true ) ) {
+			$library_type = $stored['library_type'] ?? 'group';
+		}
+		$output['library_type'] = 'user' === $library_type ? 'user' : 'group';
 		$library_id             = $input['library_id'] ?? '';
 		if ( ! is_string( $library_id ) || ( '' !== $library_id && ! preg_match( '/\A[0-9]+\z/', $library_id ) ) ) {
 			add_settings_error(
@@ -158,7 +162,7 @@ class Settings {
 			is_array( $stored ) ? $stored : array(),
 			array(
 				'api_key'       => '',
-				'library_type'  => 'user',
+				'library_type'  => 'group',
 				'library_id'    => '',
 				'cache_minutes' => 60,
 			)

@@ -67,7 +67,7 @@ function zotero_display_activate() {
 			'zotero_display_settings',
 			array(
 				'api_key'       => '',
-				'library_type'  => 'user', // Default to a user library.
+				'library_type'  => 'group', // Default to a group library.
 				'library_id'    => '',
 				'cache_minutes' => 60,
 			),

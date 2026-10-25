@@ -36,30 +36,35 @@ Features include:
 * Query-aligned database indexes for faster large-library display and filters.
 * Plugin-owned data cleanup on uninstall.
 
-== External services ==
-
-This plugin connects to https://api.zotero.org to download publication metadata when a configured source synchronizes, including scheduled refreshes and administrator-triggered batches. Requests send the configured library type and ID, optional collection and item type, sorting and pagination parameters, API version, conditional library version when available, and API key when configured. Zotero also receives the WordPress server IP and HTTP client metadata. Visitor search/filter terms are processed locally and are not sent to Zotero. Publication links may take visitors to Zotero, DOI, or publisher websites when clicked.
-
-Service terms: https://www.zotero.org/support/terms/terms_of_service
-Privacy policy: https://www.zotero.org/support/privacy
-
-This plugin is independently developed and is not endorsed by Zotero.
-
-== Installation ==
-
-1. Upload the plugin files to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP through the WordPress Plugins screen.
-2. Activate Nature Zotero Publications.
-3. Open Settings > Nature Zotero Publications.
-4. Enter the Zotero library type, library ID, optional private API key, and cache duration.
-5. Add the Nature Zotero Publications block to a post or page.
-
-Large libraries synchronize in background batches through WordPress Cron. The last completed data remains available while a later refresh is running.
-
 == Frequently Asked Questions ==
 
-= Is a Zotero API key required? =
+= Should I select Group Library or User Library? =
 
-An API key is required for private libraries. Public Zotero libraries can be displayed without one.
+Choose Group Library for a shared Zotero group, or User Library for an individual account’s library. The type must match the numeric ID. Group Library is the default for new configurations; existing saved choices are preserved. Blocks inherit the plugin settings unless you set an override.
+
+= Where do I find my library or group ID? =
+
+For a group library, copy the numeric group ID from its Zotero group URL. For a user library, find your numeric user ID at https://www.zotero.org/settings/keys. Enter only the digits in Default Library / Group ID, not a URL, username, or API key.
+
+= When do I need a Zotero API key? =
+
+Publicly readable libraries can be displayed without a key. Private libraries require a valid key with read permission for the selected user or group library. Enter only the raw key, without quotes, a `Bearer` prefix, or a header name. Never share your key in screenshots or support messages.
+
+= Why is the API key field blank after saving? =
+
+The field stays blank intentionally so the saved key is not displayed. Check Synchronization diagnostics for “API key: configured”; this confirms a key is available, but does not verify its permissions. Leaving the field blank keeps the saved key. Select Remove the saved API key to delete it. If your host defines `ZOTERO_DISPLAY_API_KEY`, that value overrides the saved key.
+
+= Why does the page say “Synchronizing publications”? =
+
+The plugin is waiting for its local publication index to populate. Open the published page to initialize its source; editor previews alone do not start synchronization. Background batches need working WordPress Cron. If progress stops, open Settings → Nature Zotero Publications → Synchronization diagnostics, check the error and retry deadline, and use Run one sync batch when eligible. Refresh settings to see the result; manual runs still respect retry delays.
+
+= What do HTTP 400 and 403 errors mean? =
+
+HTTP 400 indicates a rejected request; HTTP 403 indicates access was refused. Check the Response explanation in Synchronization diagnostics rather than assuming a database problem. Verify the library type and ID first. “Invalid key” means the supplied key was rejected; check the saved key and any overriding constant. For “Forbidden,” check library visibility and key permissions. An HTML error may also come from a hosting intermediary. Do not repeatedly clear the cache: it removes the local index and does not fix credentials or bypass retry delays.
+
+= Will updating the plugin preserve my settings and publications? =
+
+Replacing the installed plugin through WordPress’s upload/update flow preserves saved settings and the local publication index. Back up the site before updating, and do not delete the plugin first: deletion runs uninstall cleanup and removes plugin-owned data. Changing connection settings or selecting Clear Zotero Cache also clears the local index and requires synchronization again. The Group Library default does not override an existing saved User Library choice.
 
 = Is the private API key exposed to website visitors? =
 
@@ -101,9 +106,24 @@ Confirm that WordPress Cron is working and allow time for the 100-item backgroun
 
 Open Settings > Nature Zotero Publications and select Clear Zotero Cache. This clears transient responses and the local index; the next page request schedules a new synchronization.
 
-= Why does Zotero return a 403 error? =
+== External services ==
 
-Make sure User Library or Group Library matches the numeric ID. Private user or group libraries also require an API key with read permission for that library.
+This plugin connects to https://api.zotero.org to download publication metadata when a configured source synchronizes, including scheduled refreshes and administrator-triggered batches. Requests send the configured library type and ID, optional collection and item type, sorting and pagination parameters, API version, conditional library version when available, and API key when configured. Zotero also receives the WordPress server IP and HTTP client metadata. Visitor search/filter terms are processed locally and are not sent to Zotero. Publication links may take visitors to Zotero, DOI, or publisher websites when clicked.
+
+Service terms: https://www.zotero.org/support/terms/terms_of_service
+Privacy policy: https://www.zotero.org/support/privacy
+
+This plugin is independently developed and is not endorsed by Zotero.
+
+== Installation ==
+
+1. Upload the plugin files to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP through the WordPress Plugins screen.
+2. Activate Nature Zotero Publications.
+3. Open Settings > Nature Zotero Publications.
+4. Enter the Zotero library type, library ID, optional private API key, and cache duration. Group Library is the default for new configurations; existing saved choices are preserved.
+5. Add the Nature Zotero Publications block to a post or page.
+
+Large libraries synchronize in background batches through WordPress Cron. The last completed data remains available while a later refresh is running.
 
 == Changelog ==
 
