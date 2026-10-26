@@ -724,7 +724,7 @@ class Sync {
 			$chunks[] = $chunk;
 		}
 		foreach ( $chunks as $chunk ) {
-			$result = $wpdb->query( $prefix . implode( ', ', $chunk ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared -- Identifier and all row values prepared above, bounded by actual SQL bytes.
+			$result = $wpdb->query( $prefix . implode( ', ', $chunk ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Internal fixed column names; table identifier and all row values prepared above, bounded by actual SQL bytes.
 			if ( false === $result ) {
 				return new \WP_Error( 'zotero_display_index_write_failed', __( 'Unable to update the local Zotero publication index.', 'nature-zotero-publications' ) );
 			}

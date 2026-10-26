@@ -421,11 +421,21 @@ store( 'zotero-display', {
 				}
 			}
 		},
-		*goToPage() {
+		goToPage: withSyncEvent( function* ( event ) {
+			const button = event.target.closest( 'button[data-zotero-page]' );
+			if ( ! button || button.disabled ) {
+				return;
+			}
 			const context = getContext();
 			const root = getElement().ref.closest( '.zotero-display-block' );
-			const page = context.pagination.page;
-			if ( page > 0 && page !== context.page && ! context.isLoading ) {
+			const page = Number( button.dataset.zoteroPage );
+			if (
+				Number.isInteger( page ) &&
+				page > 0 &&
+				page <= context.totalPages &&
+				page !== context.page &&
+				! context.isLoading
+			) {
 				context.page = page;
 				if ( yield* requestItems( context ) ) {
 					yield delay( 0 );
@@ -436,6 +446,6 @@ store( 'zotero-display', {
 					results?.scrollIntoView( { block: 'start' } );
 				}
 			}
-		},
+		} ),
 	},
 } );

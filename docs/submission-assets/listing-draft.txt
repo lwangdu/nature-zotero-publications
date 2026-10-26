@@ -1,0 +1,16 @@
+Nature Zotero Publications — WordPress.org listing draft
+
+Proposed slug: nature-zotero-publications (availability not confirmed)
+Contributor: lobsangw (confirmed by the author)
+License: GPL-2.0-or-later
+Short description: Display a searchable and filterable Zotero bibliography with authors, dates, DOI links, citation keys, and pagination.
+
+Use the packaged readme.txt for the full description, features, FAQs, installation instructions and external-service disclosures.
+
+Screenshot captions:
+1. Searchable bibliography with year, publication-type and author filters. Uses synthetic sample publications.
+2. Block source and display controls in the editor. PENDING: do not publish a screenshot claim until captured and verified.
+3. Plugin-wide Group Library configuration and synchronization diagnostics on an isolated test site. Uses a demonstration ID, not credentials.
+
+Do not submit until the release gates in docs/audit-remediation.md are complete. No claim of official Zotero affiliation.
+After acceptance, place listing screenshots in the WordPress.org SVN assets directory, separate from the plugin ZIP. Add a Screenshots readme section matching the final approved images.

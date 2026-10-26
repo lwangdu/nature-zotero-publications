@@ -21,10 +21,12 @@
 		"nature-zotero-publications.php",
 		"uninstall.php",
 		"README.md",
-		"readme.txt"
+		"readme.txt",
+		"LICENSE"
 	],
 	"devDependencies": {
 		"@wordpress/scripts": "^30.0.0",
 		"@wordpress/interactivity": "^6.54.0"
-	}
+	},
+	"license": "GPL-2.0-or-later"
 }

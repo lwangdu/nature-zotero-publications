@@ -18,7 +18,7 @@ class Block {
 	const FRAGMENT_CACHE_PREFIX = 'zotero_display_fragment_';
 
 	/** Increment when cached block markup changes. */
-	const FRAGMENT_CACHE_VERSION = 5;
+	const FRAGMENT_CACHE_VERSION = 6;
 
 	/** Option containing fragment-cache transient keys for explicit invalidation. */
 	const FRAGMENT_CACHE_KEYS_OPTION = 'zotero_display_fragment_cache_keys';
@@ -333,11 +333,11 @@ class Block {
 						);
 						?>
 					</span>
-					<div class="zotero-page-links">
+					<div class="zotero-page-links" data-wp-on--click="actions.goToPage">
 						<button type="button" class="zotero-page-prev" data-wp-on--click="actions.previousPage" data-wp-bind--disabled="state.isPreviousDisabled" data-wp-bind--hidden="state.isPreviousHidden"><?php esc_html_e( 'Previous', 'nature-zotero-publications' ); ?></button>
 						<template data-wp-each--pagination="state.paginationItems" data-wp-each-key="context.pagination.key">
 							<span>
-								<button type="button" class="zotero-page-number" data-wp-bind--aria-current="context.pagination.ariaCurrent" data-wp-bind--aria-label="context.pagination.ariaLabel" data-wp-bind--aria-hidden="context.pagination.isEllipsis" data-wp-class--is-current="context.pagination.isCurrent" data-wp-class--is-ellipsis="context.pagination.isEllipsis" data-wp-on--click="actions.goToPage" data-wp-bind--disabled="context.pagination.isDisabled" data-wp-text="context.pagination.label"></button>
+								<button type="button" class="zotero-page-number" data-wp-bind--aria-current="context.pagination.ariaCurrent" data-wp-bind--aria-label="context.pagination.ariaLabel" data-wp-bind--aria-hidden="context.pagination.isEllipsis" data-wp-class--is-current="context.pagination.isCurrent" data-wp-class--is-ellipsis="context.pagination.isEllipsis" data-wp-bind--data-zotero-page="context.pagination.page" data-wp-bind--disabled="context.pagination.isDisabled" data-wp-text="context.pagination.label"></button>
 							</span>
 						</template>
 						<button type="button" class="zotero-page-next" data-wp-on--click="actions.nextPage" data-wp-bind--disabled="state.isNextDisabled" data-wp-bind--hidden="state.isNextHidden"><?php esc_html_e( 'Next', 'nature-zotero-publications' ); ?></button>

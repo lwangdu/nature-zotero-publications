@@ -1,5 +1,5 @@
 === Nature Zotero Publications ===
-Contributors: lwangdu
+Contributors: lobsangw
 Tags: zotero, bibliography, citations, gutenberg, publications
 Requires at least: 7.0
 Tested up to: 7.1
@@ -129,15 +129,23 @@ Large libraries synchronize in background batches through WordPress Cron. The la
 
 = 1.0.7 =
 
+* Handle numbered pagination clicks in the parent block context.
+
+* Default new configurations to Group Library while preserving saved choices.
+* Add setup FAQs and administrator-only synchronization diagnostics.
+* Support plain permalinks and preserve scientific text and valid Unicode.
+* Bound SQL writes and public requests, and honor full Zotero retry deadlines.
+* Keep editor previews read-only and preserve completed data during refreshes.
+
 * Preserve case-sensitive Zotero sorting values such as dateAdded.
 * Load editor previews when using the plugin-wide default library.
 * Support arrow navigation and Escape dismissal in author suggestions, restoring input focus on dismissal or keyboard selection.
 
-* Show first indexed publications before the full initial synchronization completes; limit browser-triggered priming to one 100-item page.
+* Show first indexed publications before the full initial synchronization completes; render pages without synchronous Zotero requests.
 
 * Require PHP 8.3 or newer.
 * Require WordPress 7.0 or newer.
-* Keep the five-second polling delay after failed HTTP responses.
+* Back off failed polling requests up to 60 seconds and pause polling in hidden tabs.
 * Honor the five-minute retry interval after synchronization failures.
 
 = 1.0.6 =
