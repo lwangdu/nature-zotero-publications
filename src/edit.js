@@ -276,7 +276,7 @@ export default function Edit( { attributes, setAttributes } ) {
 						) }
 						value={ libraryId }
 						help={ __(
-							'Leave blank to use the plugin-wide default set in Settings → Nature Zotero Publications.',
+							'Leave blank to use the plugin-wide default set in Settings → Publications List Display for Zotero.',
 							'nature-zotero-publications'
 						) }
 						onChange={ ( value ) =>
@@ -435,7 +435,7 @@ export default function Edit( { attributes, setAttributes } ) {
 				{ ! libraryId && (
 					<Notice status="info" isDismissible={ false }>
 						{ __(
-							'Using the plugin-wide default library (set in Settings → Nature Zotero Publications). Set a Library ID above to override it for this block.',
+							'Using the plugin-wide default library (set in Settings → Publications List Display for Zotero). Set a Library ID above to override it for this block.',
 							'nature-zotero-publications'
 						) }
 					</Notice>

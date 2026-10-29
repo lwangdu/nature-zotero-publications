@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Repository guidance for AI coding agents working on **Nature Zotero Publications**.
+Repository guidance for AI coding agents working on **Publications List Display for Zotero**.
 
 ## Project Overview
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Registers the Nature Zotero Publications block (dynamic, server-rendered) and its assets.
+ * Registers the Publications List Display for Zotero block (dynamic, server-rendered) and its assets.
  *
  * @package ZoteroDisplay
  */
@@ -10,7 +10,7 @@ namespace Zotero_Display;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers and renders the Nature Zotero Publications block.
+ * Registers and renders the Publications List Display for Zotero block.
  */
 class Block {
 
@@ -127,7 +127,7 @@ class Block {
 
 		if ( empty( $query_args['library_id'] ) ) {
 			if ( current_user_can( 'edit_posts' ) ) {
-				return '<p class="zotero-display-error">' . esc_html__( 'Nature Zotero Publications: please configure a library ID in Settings → Nature Zotero Publications or in this block\'s settings.', 'nature-zotero-publications' ) . '</p>';
+				return '<p class="zotero-display-error">' . esc_html__( 'Publications List Display for Zotero: please configure a library ID in Settings → Publications List Display for Zotero or in this block\'s settings.', 'nature-zotero-publications' ) . '</p>';
 			}
 			return '';
 		}
@@ -443,7 +443,7 @@ class Block {
 			if ( current_user_can( 'edit_posts' ) && ! empty( $sync_state['error'] ) ) {
 				$message = sprintf(
 					/* translators: %s: synchronization error message. */
-					__( 'Nature Zotero Publications synchronization error: %s', 'nature-zotero-publications' ),
+					__( 'Publications List Display for Zotero synchronization error: %s', 'nature-zotero-publications' ),
 					$sync_state['error']
 				);
 			}

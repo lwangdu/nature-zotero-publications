@@ -1,6 +1,8 @@
-# Nature Zotero Publications
+# Publications List Display for Zotero
 
-Nature Zotero Publications is a dynamic WordPress block that displays a complete Zotero user or group library as a searchable, filterable bibliography.
+Publications List Display for Zotero is a dynamic WordPress block that displays a complete Zotero user or group library as a searchable, filterable bibliography.
+
+This is an independent third-party integration for Zotero. It is not affiliated with or endorsed by Zotero.
 
 Current version: **1.0.7**
 
@@ -47,7 +49,7 @@ The field stays blank intentionally so the saved key is not displayed. Check **S
 
 ### Why does the page say “Synchronizing publications”?
 
-The plugin is waiting for its local publication index to populate. Open the published page to initialize its source; editor previews alone do not start synchronization. Background batches need working WordPress Cron. If progress stops, open **Settings → Nature Zotero Publications → Synchronization diagnostics**, check the error and retry deadline, and use **Run one sync batch** when eligible. Refresh settings to see the result; manual runs still respect retry delays.
+The plugin is waiting for its local publication index to populate. Open the published page to initialize its source; editor previews alone do not start synchronization. Background batches need working WordPress Cron. If progress stops, open **Settings → Publications List Display for Zotero → Synchronization diagnostics**, check the error and retry deadline, and use **Run one sync batch** when eligible. Refresh settings to see the result; manual runs still respect retry delays.
 
 ### What do HTTP 400 and 403 errors mean?
 
@@ -84,13 +86,13 @@ The cache-duration setting controls when a completed source becomes eligible for
 ## Installation and configuration
 
 1. Upload the plugin to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP in WordPress.
-2. Activate **Nature Zotero Publications**.
-3. Open **Settings → Nature Zotero Publications**.
+2. Activate **Publications List Display for Zotero**.
+3. Open **Settings → Publications List Display for Zotero**.
 4. Select the default library type: **User Library** or **Group Library**. Group Library is the default for new configurations; existing saved choices are preserved.
 5. Enter the numeric Zotero user ID or group ID.
 6. Enter an API key only when the library is private.
 7. Choose the cache duration in minutes and save the settings.
-8. Add the **Nature Zotero Publications** block to a post or page.
+8. Add the **Publications List Display for Zotero** block to a post or page.
 
 The numeric group ID appears in a Zotero group URL. A Zotero user ID and API key can be found or created at [zotero.org/settings/keys](https://www.zotero.org/settings/keys).
 
@@ -203,7 +205,7 @@ Confirm that the selected library type matches the ID. For a group URL, use **Gr
 
 ### Search or filters show old data
 
-Open **Settings → Nature Zotero Publications** and select **Clear Zotero Cache**. This removes cached responses and the completed local index; the next page request starts a new synchronization.
+Open **Settings → Publications List Display for Zotero** and select **Clear Zotero Cache**. This removes cached responses and the completed local index; the next page request starts a new synchronization.
 
 ### The displayed count differs from Zotero
 
@@ -295,7 +297,7 @@ Full-text search, a single index supporting local sorts, incremental Zotero sync
 
 ### Administrator synchronization diagnostics
 
-Settings > Nature Zotero Publications includes administrator-only synchronization diagnostics. It checks whether the publication tables are readable, shows saved source progress, sanitized errors, retry deadlines, and pending cron events. It reports rejected scheduling attempts made after this update. API keys, raw SQL, and raw transport error details are never displayed. Table readability does not establish write permission or full schema compatibility.
+Settings > Publications List Display for Zotero includes administrator-only synchronization diagnostics. It checks whether the publication tables are readable, shows saved source progress, sanitized errors, retry deadlines, and pending cron events. It reports rejected scheduling attempts made after this update. API keys, raw SQL, and raw transport error details are never displayed. Table readability does not establish write permission or full schema compatibility.
 
 Run one sync batch uses a capability and nonce-protected POST and processes at most one 100-item page for a known source. It preserves completed publications and respects locks, API cooldowns, and retry delays. It can take up to 20 seconds. The panel includes the valid default source and up to 100 recent stored source options; open a configured block on the frontend first if its override is missing. No WP Crontrol installation is needed. Refresh the settings page after a run to inspect progress. Missing or unreadable tables disable manual runs; inspect activation and database permissions before proceeding.
 

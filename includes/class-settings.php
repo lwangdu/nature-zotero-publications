@@ -54,8 +54,8 @@ class Settings {
 	 */
 	public function add_settings_page() {
 		add_options_page(
-			__( 'Nature Zotero Publications', 'nature-zotero-publications' ),
-			__( 'Nature Zotero Publications', 'nature-zotero-publications' ),
+			__( 'Publications List Display for Zotero', 'nature-zotero-publications' ),
+			__( 'Publications List Display for Zotero', 'nature-zotero-publications' ),
 			'manage_options',
 			'nature-zotero-publications',
 			array( $this, 'render_settings_page' )
@@ -203,7 +203,7 @@ class Settings {
 		$settings = self::get_settings();
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Nature Zotero Publications Settings', 'nature-zotero-publications' ); ?></h1>
+			<h1><?php esc_html_e( 'Publications List Display for Zotero Settings', 'nature-zotero-publications' ); ?></h1>
 
 			<?php if ( isset( $_GET['zotero_cache_cleared'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 				<div class="notice notice-success is-dismissible">

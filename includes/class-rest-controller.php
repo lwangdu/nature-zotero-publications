@@ -263,7 +263,7 @@ class REST_Controller {
 		if ( empty( $query_args['library_id'] ) ) {
 			return new \WP_Error(
 				'zotero_display_no_library',
-				__( 'No Zotero library ID configured. Set one in Settings → Nature Zotero Publications, or on this block.', 'nature-zotero-publications' ),
+				__( 'No Zotero library ID configured. Set one in Settings → Publications List Display for Zotero, or on this block.', 'nature-zotero-publications' ),
 				array( 'status' => 400 )
 			);
 		}

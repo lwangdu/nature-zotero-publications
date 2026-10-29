@@ -1,6 +1,7 @@
-Nature Zotero Publications — WordPress.org listing draft
+Publications List Display for Zotero — WordPress.org listing draft
 
-Proposed slug: nature-zotero-publications (availability not confirmed)
+Proposed directory slug: publications-list-display-for-zotero (subject to reviewer confirmation; availability not confirmed)
+Current installed plugin slug: nature-zotero-publications (retained for existing installations)
 Contributor: lobsangw (confirmed by the author)
 License: GPL-2.0-or-later
 Short description: Display a searchable and filterable Zotero bibliography with authors, dates, DOI links, citation keys, and pagination.

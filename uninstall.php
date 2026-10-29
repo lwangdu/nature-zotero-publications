@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall cleanup for Nature Zotero Publications.
+ * Uninstall cleanup for Publications List Display for Zotero.
  *
  * @package ZoteroDisplay
  */

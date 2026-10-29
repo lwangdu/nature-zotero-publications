@@ -1,13 +1,13 @@
 ---
 name: nature-zotero-publications
-description: Develop, debug, review, or prepare releases for the Nature Zotero Publications WordPress plugin, including its dynamic bibliography block, Zotero synchronization, REST endpoints, and frontend interactivity. Use for this plugin's implementation and maintenance, not general Zotero research.
+description: Develop, debug, review, or prepare releases for the Publications List Display for Zotero WordPress plugin, including its dynamic bibliography block, Zotero synchronization, REST endpoints, and frontend interactivity. Use for this plugin's implementation and maintenance, not general Zotero research.
 license: GPL-2.0-or-later
 metadata:
   project-type: wordpress-plugin
   text-domain: nature-zotero-publications
 ---
 
-# Nature Zotero Publications
+# Publications List Display for Zotero
 
 Maintain the plugin's dynamic bibliography block, local Zotero index,
 and interactive frontend while preserving stored content, public

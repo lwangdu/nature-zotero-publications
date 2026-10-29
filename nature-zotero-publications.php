@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       Nature Zotero Publications
+ * Plugin Name:       Publications List Display for Zotero
  * Description:       Display a searchable and filterable Zotero bibliography with publication metadata, links, and pagination.
  * Version:            1.0.7
  * Requires at least:  7.0
