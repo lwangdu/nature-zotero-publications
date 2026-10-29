@@ -33,7 +33,7 @@ function ItemCard( { item, showAbstract } ) {
 					<span className="screen-reader-text">
 						{ ` (${ __(
 							'opens in a new tab',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) })` }
 					</span>
 				</a>{ ' ' }
@@ -44,9 +44,10 @@ function ItemCard( { item, showAbstract } ) {
 			{ ( item.publication || item.date ) && (
 				<p className="zotero-publication-citation">
 					{ item.publication &&
-						`${ __( 'In:', 'nature-zotero-publications' ) } ${
-							item.publication
-						}` }
+						`${ __(
+							'In:',
+							'publications-list-display-for-zotero'
+						) } ${ item.publication }` }
 					{ item.publication && item.date ? ', ' : '' }
 					{ item.date }.
 				</p>
@@ -55,7 +56,10 @@ function ItemCard( { item, showAbstract } ) {
 				{ showAbstract && item.abstract && (
 					<details className="zotero-publication-abstract">
 						<summary>
-							{ __( 'Abstract', 'nature-zotero-publications' ) }
+							{ __(
+								'Abstract',
+								'publications-list-display-for-zotero'
+							) }
 						</summary>
 						<p>{ item.abstract }</p>
 					</details>
@@ -66,11 +70,11 @@ function ItemCard( { item, showAbstract } ) {
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						{ __( 'DOI', 'nature-zotero-publications' ) }
+						{ __( 'DOI', 'publications-list-display-for-zotero' ) }
 						<span className="screen-reader-text">
 							{ ` (${ __(
 								'opens in a new tab',
-								'nature-zotero-publications'
+								'publications-list-display-for-zotero'
 							) })` }
 						</span>
 					</a>
@@ -81,11 +85,14 @@ function ItemCard( { item, showAbstract } ) {
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						{ __( 'Source', 'nature-zotero-publications' ) }
+						{ __(
+							'Source',
+							'publications-list-display-for-zotero'
+						) }
 						<span className="screen-reader-text">
 							{ ` (${ __(
 								'opens in a new tab',
-								'nature-zotero-publications'
+								'publications-list-display-for-zotero'
 							) })` }
 						</span>
 					</a>
@@ -95,17 +102,20 @@ function ItemCard( { item, showAbstract } ) {
 					target="_blank"
 					rel="noopener noreferrer"
 				>
-					{ __( 'Zotero', 'nature-zotero-publications' ) }
+					{ __( 'Zotero', 'publications-list-display-for-zotero' ) }
 					<span className="screen-reader-text">
 						{ ` (${ __(
 							'opens in a new tab',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) })` }
 					</span>
 				</a>
 				{ item.citation_key && (
 					<span>
-						{ __( 'Citation key:', 'nature-zotero-publications' ) }{ ' ' }
+						{ __(
+							'Citation key:',
+							'publications-list-display-for-zotero'
+						) }{ ' ' }
 						<code>{ item.citation_key }</code>
 					</span>
 				) }
@@ -178,7 +188,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					err.message ||
 						__(
 							'Failed to load Zotero data.',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						)
 				);
 				setIsLoading( false );
@@ -207,22 +217,22 @@ export default function Edit( { attributes, setAttributes } ) {
 
 	let emptyMessage = __(
 		'No indexed publications yet. View the page to start synchronization, then refresh this preview.',
-		'nature-zotero-publications'
+		'publications-list-display-for-zotero'
 	);
 	if ( data?.sync?.status === 'syncing' ) {
 		emptyMessage = __(
 			'Synchronizing publications. Refresh this preview shortly.',
-			'nature-zotero-publications'
+			'publications-list-display-for-zotero'
 		);
 	} else if ( data?.sync?.status === 'error' ) {
 		emptyMessage = __(
 			'Synchronization failed. Check the source settings and try again later.',
-			'nature-zotero-publications'
+			'publications-list-display-for-zotero'
 		);
 	} else if ( data?.sync?.ready ) {
 		emptyMessage = __(
 			'No items found for this library/collection.',
-			'nature-zotero-publications'
+			'publications-list-display-for-zotero'
 		);
 	}
 
@@ -232,35 +242,35 @@ export default function Edit( { attributes, setAttributes } ) {
 				<PanelBody
 					title={ __(
 						'Zotero Source',
-						'nature-zotero-publications'
+						'publications-list-display-for-zotero'
 					) }
 					initialOpen={ true }
 				>
 					<SelectControl
 						label={ __(
 							'Library Type',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						value={ libraryType }
 						options={ [
 							{
 								label: __(
 									'Use plugin default',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: '',
 							},
 							{
 								label: __(
 									'User Library',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'user',
 							},
 							{
 								label: __(
 									'Group Library',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'group',
 							},
@@ -272,12 +282,12 @@ export default function Edit( { attributes, setAttributes } ) {
 					<TextControl
 						label={ __(
 							'Library / Group ID (optional override)',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						value={ libraryId }
 						help={ __(
 							'Leave blank to use the plugin-wide default set in Settings → Publications List Display for Zotero.',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						onChange={ ( value ) =>
 							setAttributes( { libraryId: value } )
@@ -286,12 +296,12 @@ export default function Edit( { attributes, setAttributes } ) {
 					<TextControl
 						label={ __(
 							'Collection Key (optional)',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						value={ collection }
 						help={ __(
 							'Limit results to a specific Zotero collection.',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						onChange={ ( value ) =>
 							setAttributes( { collection: value } )
@@ -301,39 +311,42 @@ export default function Edit( { attributes, setAttributes } ) {
 				<PanelBody
 					title={ __(
 						'Sorting & Layout',
-						'nature-zotero-publications'
+						'publications-list-display-for-zotero'
 					) }
 					initialOpen={ false }
 				>
 					<SelectControl
-						label={ __( 'Sort By', 'nature-zotero-publications' ) }
+						label={ __(
+							'Sort By',
+							'publications-list-display-for-zotero'
+						) }
 						value={ sortBy }
 						options={ [
 							{
 								label: __(
 									'Date',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'date',
 							},
 							{
 								label: __(
 									'Title',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'title',
 							},
 							{
 								label: __(
 									'Creator',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'creator',
 							},
 							{
 								label: __(
 									'Date Added',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'dateAdded',
 							},
@@ -345,21 +358,21 @@ export default function Edit( { attributes, setAttributes } ) {
 					<SelectControl
 						label={ __(
 							'Sort Direction',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						value={ sortDirection }
 						options={ [
 							{
 								label: __(
 									'Descending',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'desc',
 							},
 							{
 								label: __(
 									'Ascending',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								),
 								value: 'asc',
 							},
@@ -371,7 +384,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<RangeControl
 						label={ __(
 							'Items Per Page',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						value={ itemsPerPage }
 						onChange={ ( value ) =>
@@ -384,14 +397,14 @@ export default function Edit( { attributes, setAttributes } ) {
 				<PanelBody
 					title={ __(
 						'Display Options',
-						'nature-zotero-publications'
+						'publications-list-display-for-zotero'
 					) }
 					initialOpen={ false }
 				>
 					<ToggleControl
 						label={ __(
 							'Show Stats',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						checked={ showStats }
 						onChange={ ( value ) =>
@@ -401,7 +414,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<ToggleControl
 						label={ __(
 							'Show Search',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						checked={ showSearch }
 						onChange={ ( value ) =>
@@ -411,7 +424,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<ToggleControl
 						label={ __(
 							'Show Filters',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						checked={ showFilters }
 						onChange={ ( value ) =>
@@ -421,7 +434,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<ToggleControl
 						label={ __(
 							'Show Abstract',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 						checked={ showAbstract }
 						onChange={ ( value ) =>
@@ -436,7 +449,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					<Notice status="info" isDismissible={ false }>
 						{ __(
 							'Using the plugin-wide default library (set in Settings → Publications List Display for Zotero). Set a Library ID above to override it for this block.',
-							'nature-zotero-publications'
+							'publications-list-display-for-zotero'
 						) }
 					</Notice>
 				) }
@@ -453,7 +466,7 @@ export default function Edit( { attributes, setAttributes } ) {
 						<span>
 							{ __(
 								'Loading Zotero data…',
-								'nature-zotero-publications'
+								'publications-list-display-for-zotero'
 							) }
 						</span>
 					</div>
@@ -475,7 +488,7 @@ export default function Edit( { attributes, setAttributes } ) {
 									<span className="zotero-stat-label">
 										{ __(
 											'entries',
-											'nature-zotero-publications'
+											'publications-list-display-for-zotero'
 										) }
 									</span>
 								</div>
@@ -490,7 +503,7 @@ export default function Edit( { attributes, setAttributes } ) {
 										className="zotero-display-search"
 										placeholder={ __(
 											'Search publications…',
-											'nature-zotero-publications'
+											'publications-list-display-for-zotero'
 										) }
 										disabled
 									/>
@@ -504,7 +517,7 @@ export default function Edit( { attributes, setAttributes } ) {
 											<option>
 												{ __(
 													'All years',
-													'nature-zotero-publications'
+													'publications-list-display-for-zotero'
 												) }
 											</option>
 										</select>
@@ -515,7 +528,7 @@ export default function Edit( { attributes, setAttributes } ) {
 											<option>
 												{ __(
 													'All types',
-													'nature-zotero-publications'
+													'publications-list-display-for-zotero'
 												) }
 											</option>
 										</select>
@@ -526,7 +539,7 @@ export default function Edit( { attributes, setAttributes } ) {
 											<option>
 												{ __(
 													'All authors',
-													'nature-zotero-publications'
+													'publications-list-display-for-zotero'
 												) }
 											</option>
 										</select>
@@ -554,12 +567,12 @@ export default function Edit( { attributes, setAttributes } ) {
 							<p className="zotero-display-pagination-preview-note">
 								{ __(
 									'Pagination is interactive on the published page.',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								) }{ ' ' }
 								({ data.pagination.total_pages }{ ' ' }
 								{ __(
 									'pages total',
-									'nature-zotero-publications'
+									'publications-list-display-for-zotero'
 								) }
 								)
 							</p>

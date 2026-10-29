@@ -7,7 +7,7 @@
 	"icon": "book-alt",
 	"description": "Display live Zotero library items as a searchable, filterable bibliography.",
 	"keywords": [ "zotero", "bibliography", "citations", "references" ],
-	"textdomain": "nature-zotero-publications",
+	"textdomain": "publications-list-display-for-zotero",
 	"attributes": {
 		"libraryType": {
 			"type": "string",

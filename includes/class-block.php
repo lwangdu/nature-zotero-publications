@@ -127,7 +127,7 @@ class Block {
 
 		if ( empty( $query_args['library_id'] ) ) {
 			if ( current_user_can( 'edit_posts' ) ) {
-				return '<p class="zotero-display-error">' . esc_html__( 'Publications List Display for Zotero: please configure a library ID in Settings → Publications List Display for Zotero or in this block\'s settings.', 'nature-zotero-publications' ) . '</p>';
+				return '<p class="zotero-display-error">' . esc_html__( 'Publications List Display for Zotero: please configure a library ID in Settings → Publications List Display for Zotero or in this block\'s settings.', 'publications-list-display-for-zotero' ) . '</p>';
 			}
 			return '';
 		}
@@ -169,7 +169,7 @@ class Block {
 		$sync_message = $is_partial
 			? sprintf(
 				/* translators: 1: processed publication count, 2: total publication count. */
-				__( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'nature-zotero-publications' ),
+				__( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'publications-list-display-for-zotero' ),
 				number_format_i18n( $public_state['processed'] ),
 				number_format_i18n( $public_state['total'] )
 			)
@@ -201,12 +201,12 @@ class Block {
 			'hasFetched'        => false,
 			'isLoading'         => false,
 			'isEmpty'           => false,
-			'message'           => __( 'No items match your filters.', 'nature-zotero-publications' ),
-			'noResultsMessage'  => __( 'No items match your filters.', 'nature-zotero-publications' ),
-			'errorMessage'      => __( 'Unable to load items right now.', 'nature-zotero-publications' ),
-			'undatedLabel'      => __( 'Undated', 'nature-zotero-publications' ),
-			'inLabel'           => __( 'In:', 'nature-zotero-publications' ),
-			'pageLabel'         => __( 'Page', 'nature-zotero-publications' ),
+			'message'           => __( 'No items match your filters.', 'publications-list-display-for-zotero' ),
+			'noResultsMessage'  => __( 'No items match your filters.', 'publications-list-display-for-zotero' ),
+			'errorMessage'      => __( 'Unable to load items right now.', 'publications-list-display-for-zotero' ),
+			'undatedLabel'      => __( 'Undated', 'publications-list-display-for-zotero' ),
+			'inLabel'           => __( 'In:', 'publications-list-display-for-zotero' ),
+			'pageLabel'         => __( 'Page', 'publications-list-display-for-zotero' ),
 			'requestId'         => 0,
 			'authorRequestId'   => 0,
 		);
@@ -216,9 +216,9 @@ class Block {
 			$context['syncProgressMax'] = max( 1, (int) $public_state['total'] );
 			$context['syncMessage']     = $sync_message;
 			/* translators: 1: processed publication count, 2: total publication count. */
-			$context['syncProgressTemplate'] = __( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'nature-zotero-publications' );
-			$context['syncPreparingMessage'] = __( 'Preparing publication synchronization…', 'nature-zotero-publications' );
-			$context['syncErrorMessage']     = __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' );
+			$context['syncProgressTemplate'] = __( 'Synchronizing publications: %1$s of %2$s processed. Available publications are shown below.', 'publications-list-display-for-zotero' );
+			$context['syncPreparingMessage'] = __( 'Preparing publication synchronization…', 'publications-list-display-for-zotero' );
+			$context['syncErrorMessage']     = __( 'The publication library could not be synchronized. Please try again later.', 'publications-list-display-for-zotero' );
 		}
 
 		$wrapper_args = array(
@@ -255,30 +255,30 @@ class Block {
 			<?php if ( $attributes['showStats'] ) : ?>
 				<div class="zotero-display-stats" data-zotero-stats role="status" aria-live="polite" aria-atomic="true">
 					<span class="zotero-stat-value" data-zotero-entry-count data-wp-text="context.totalItems"><?php echo esc_html( $total ); ?></span>
-					<span class="zotero-stat-label"><?php esc_html_e( 'entries', 'nature-zotero-publications' ); ?></span>
+					<span class="zotero-stat-label"><?php esc_html_e( 'entries', 'publications-list-display-for-zotero' ); ?></span>
 				</div>
 			<?php endif; ?>
 
 			<?php if ( $attributes['showSearch'] || $attributes['showFilters'] ) : ?>
 				<div class="zotero-display-controls" data-zotero-controls>
 					<?php if ( $attributes['showSearch'] ) : ?>
-						<label><span class="screen-reader-text"><?php esc_html_e( 'Search publications', 'nature-zotero-publications' ); ?></span><input type="search" class="zotero-display-search" placeholder="<?php esc_attr_e( 'Search publications…', 'nature-zotero-publications' ); ?>" data-wp-bind--value="context.search" data-wp-on--input="actions.search" /></label>
+						<label><span class="screen-reader-text"><?php esc_html_e( 'Search publications', 'publications-list-display-for-zotero' ); ?></span><input type="search" class="zotero-display-search" placeholder="<?php esc_attr_e( 'Search publications…', 'publications-list-display-for-zotero' ); ?>" data-wp-bind--value="context.search" data-wp-on--input="actions.search" /></label>
 					<?php endif; ?>
 					<?php if ( $attributes['showFilters'] ) : ?>
 						<div class="zotero-filter-row">
-							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by year', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-wp-on--change="actions.filterYear"><option value=""><?php esc_html_e( 'All years', 'nature-zotero-publications' ); ?></option>
+							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by year', 'publications-list-display-for-zotero' ); ?></span><select class="zotero-display-filter" data-wp-on--change="actions.filterYear"><option value=""><?php esc_html_e( 'All years', 'publications-list-display-for-zotero' ); ?></option>
 							<?php
 							foreach ( $stats['available_years'] as $facet ) :
 								?>
 								<option value="<?php echo esc_attr( $facet['value'] ); ?>"><?php echo esc_html( $facet['value'] . ' (' . $facet['count'] . ')' ); ?></option><?php endforeach; ?></select></label>
-							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by type', 'nature-zotero-publications' ); ?></span><select class="zotero-display-filter" data-wp-on--change="actions.filterType"><option value=""><?php esc_html_e( 'All types', 'nature-zotero-publications' ); ?></option>
+							<label><span class="screen-reader-text"><?php esc_html_e( 'Filter by type', 'publications-list-display-for-zotero' ); ?></span><select class="zotero-display-filter" data-wp-on--change="actions.filterType"><option value=""><?php esc_html_e( 'All types', 'publications-list-display-for-zotero' ); ?></option>
 							<?php
 							foreach ( $stats['available_types'] as $facet ) :
 								?>
 								<option value="<?php echo esc_attr( $facet['value'] ); ?>"><?php echo esc_html( $facet['label'] . ' (' . $facet['count'] . ')' ); ?></option><?php endforeach; ?></select></label>
 							<div class="zotero-author-combobox">
-								<label for="<?php echo esc_attr( $author_input_id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Filter by author', 'nature-zotero-publications' ); ?></span></label>
-								<input id="<?php echo esc_attr( $author_input_id ); ?>" type="search" class="zotero-display-filter" placeholder="<?php esc_attr_e( 'Search authors…', 'nature-zotero-publications' ); ?>" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="<?php echo esc_attr( $author_results_id ); ?>" data-wp-bind--aria-expanded="context.authorOpen" data-wp-bind--value="context.authorQuery" data-wp-on--input="actions.searchAuthors" data-wp-on--keydown="actions.authorKeydown" />
+								<label for="<?php echo esc_attr( $author_input_id ); ?>"><span class="screen-reader-text"><?php esc_html_e( 'Filter by author', 'publications-list-display-for-zotero' ); ?></span></label>
+								<input id="<?php echo esc_attr( $author_input_id ); ?>" type="search" class="zotero-display-filter" placeholder="<?php esc_attr_e( 'Search authors…', 'publications-list-display-for-zotero' ); ?>" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="<?php echo esc_attr( $author_results_id ); ?>" data-wp-bind--aria-expanded="context.authorOpen" data-wp-bind--value="context.authorQuery" data-wp-on--input="actions.searchAuthors" data-wp-on--keydown="actions.authorKeydown" />
 								<ul id="<?php echo esc_attr( $author_results_id ); ?>" class="zotero-author-results" role="listbox" data-wp-bind--hidden="!context.authorOpen">
 									<template data-wp-each--author="context.authorSuggestions" data-wp-each-key="context.author.value">
 										<li role="presentation"><button type="button" role="option" data-wp-on--click="actions.selectAuthor" data-wp-on--keydown="actions.selectAuthorKeydown"><span data-wp-text="context.author.value"></span> <span aria-hidden="true">(<span data-wp-text="context.author.count"></span>)</span></button></li>
@@ -295,7 +295,7 @@ class Block {
 				<?php foreach ( $first_page as $item ) : ?>
 					<?php if ( $current_year !== $item['date_year'] ) : ?>
 						<?php $current_year = $item['date_year']; ?>
-						<h2 class="zotero-year-heading"><?php echo esc_html( $current_year ? $current_year : __( 'Undated', 'nature-zotero-publications' ) ); ?></h2>
+						<h2 class="zotero-year-heading"><?php echo esc_html( $current_year ? $current_year : __( 'Undated', 'publications-list-display-for-zotero' ) ); ?></h2>
 					<?php endif; ?>
 					<?php echo self::render_card( $item, $attributes ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				<?php endforeach; ?>
@@ -307,26 +307,26 @@ class Block {
 						<h2 class="zotero-year-heading" data-wp-bind--hidden="!context.item.showYearHeading" data-wp-text="context.item.yearLabel"></h2>
 						<article class="zotero-publication" data-wp-bind--data-zotero-item-type="context.item.item_type" data-wp-bind--data-zotero-item-year="context.item.date_year">
 							<p class="zotero-publication-authors" data-wp-text="context.item.creator_str"></p>
-							<h3 class="zotero-publication-title"><a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.linkHref"><span data-wp-text="context.item.title"></span><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a> <span class="zotero-type-badge" data-wp-bind--hidden="!context.item.item_type_label" data-wp-text="context.item.item_type_label"></span></h3>
+							<h3 class="zotero-publication-title"><a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.linkHref"><span data-wp-text="context.item.title"></span><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a> <span class="zotero-type-badge" data-wp-bind--hidden="!context.item.item_type_label" data-wp-text="context.item.item_type_label"></span></h3>
 							<p class="zotero-publication-citation" data-wp-bind--hidden="!context.item.citationText" data-wp-text="context.item.citationText"></p>
 							<div class="zotero-publication-actions">
-								<details class="zotero-publication-abstract" data-wp-bind--hidden="!context.item.showAbstract"><summary><?php esc_html_e( 'Abstract', 'nature-zotero-publications' ); ?></summary><p data-wp-text="context.item.abstract"></p></details>
-								<a target="_blank" rel="noopener noreferrer" data-wp-bind--hidden="!context.item.doi" data-wp-bind--href="context.item.doi_url"><?php esc_html_e( 'DOI', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
-								<a target="_blank" rel="noopener noreferrer" data-wp-bind--hidden="!context.item.source_url" data-wp-bind--href="context.item.source_url"><?php esc_html_e( 'Source', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
-								<a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.zotero_link"><?php esc_html_e( 'Zotero', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
-								<span data-wp-bind--hidden="!context.item.citation_key"><?php esc_html_e( 'Citation key:', 'nature-zotero-publications' ); ?> <code data-wp-text="context.item.citation_key"></code></span>
+								<details class="zotero-publication-abstract" data-wp-bind--hidden="!context.item.showAbstract"><summary><?php esc_html_e( 'Abstract', 'publications-list-display-for-zotero' ); ?></summary><p data-wp-text="context.item.abstract"></p></details>
+								<a target="_blank" rel="noopener noreferrer" data-wp-bind--hidden="!context.item.doi" data-wp-bind--href="context.item.doi_url"><?php esc_html_e( 'DOI', 'publications-list-display-for-zotero' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a>
+								<a target="_blank" rel="noopener noreferrer" data-wp-bind--hidden="!context.item.source_url" data-wp-bind--href="context.item.source_url"><?php esc_html_e( 'Source', 'publications-list-display-for-zotero' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a>
+								<a target="_blank" rel="noopener noreferrer" data-wp-bind--href="context.item.zotero_link"><?php esc_html_e( 'Zotero', 'publications-list-display-for-zotero' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a>
+								<span data-wp-bind--hidden="!context.item.citation_key"><?php esc_html_e( 'Citation key:', 'publications-list-display-for-zotero' ); ?> <code data-wp-text="context.item.citation_key"></code></span>
 							</div>
 						</article>
 					</div>
 				</template>
 			</div>
 
-			<nav class="zotero-display-pagination" aria-label="<?php esc_attr_e( 'Publication pagination', 'nature-zotero-publications' ); ?>" data-wp-bind--hidden="state.isPaginationHidden">
+			<nav class="zotero-display-pagination" aria-label="<?php esc_attr_e( 'Publication pagination', 'publications-list-display-for-zotero' ); ?>" data-wp-bind--hidden="state.isPaginationHidden">
 					<span class="zotero-page-status" data-zotero-page-status role="status" aria-live="polite" aria-atomic="true">
 						<?php
 						printf(
 							/* translators: 1: current page, 2: total pages, 3: total entries. */
-							esc_html__( 'Page %1$s of %2$s (%3$s entries)', 'nature-zotero-publications' ),
+							esc_html__( 'Page %1$s of %2$s (%3$s entries)', 'publications-list-display-for-zotero' ),
 							'<span data-wp-text="context.page">1</span>',
 							'<span data-wp-text="context.totalPages">' . esc_html( $total_pages ) . '</span>',
 							'<span data-wp-text="context.totalItems">' . esc_html( $total ) . '</span>'
@@ -334,17 +334,17 @@ class Block {
 						?>
 					</span>
 					<div class="zotero-page-links" data-wp-on--click="actions.goToPage">
-						<button type="button" class="zotero-page-prev" data-wp-on--click="actions.previousPage" data-wp-bind--disabled="state.isPreviousDisabled" data-wp-bind--hidden="state.isPreviousHidden"><?php esc_html_e( 'Previous', 'nature-zotero-publications' ); ?></button>
+						<button type="button" class="zotero-page-prev" data-wp-on--click="actions.previousPage" data-wp-bind--disabled="state.isPreviousDisabled" data-wp-bind--hidden="state.isPreviousHidden"><?php esc_html_e( 'Previous', 'publications-list-display-for-zotero' ); ?></button>
 						<template data-wp-each--pagination="state.paginationItems" data-wp-each-key="context.pagination.key">
 							<span>
 								<button type="button" class="zotero-page-number" data-wp-bind--aria-current="context.pagination.ariaCurrent" data-wp-bind--aria-label="context.pagination.ariaLabel" data-wp-bind--aria-hidden="context.pagination.isEllipsis" data-wp-class--is-current="context.pagination.isCurrent" data-wp-class--is-ellipsis="context.pagination.isEllipsis" data-wp-bind--data-zotero-page="context.pagination.page" data-wp-bind--disabled="context.pagination.isDisabled" data-wp-text="context.pagination.label"></button>
 							</span>
 						</template>
-						<button type="button" class="zotero-page-next" data-wp-on--click="actions.nextPage" data-wp-bind--disabled="state.isNextDisabled" data-wp-bind--hidden="state.isNextHidden"><?php esc_html_e( 'Next', 'nature-zotero-publications' ); ?></button>
+						<button type="button" class="zotero-page-next" data-wp-on--click="actions.nextPage" data-wp-bind--disabled="state.isNextDisabled" data-wp-bind--hidden="state.isNextHidden"><?php esc_html_e( 'Next', 'publications-list-display-for-zotero' ); ?></button>
 					</div>
 			</nav>
 
-			<div class="zotero-display-empty" role="status" aria-live="polite" aria-atomic="true" data-wp-bind--hidden="!context.isEmpty" data-wp-text="context.message"><?php esc_html_e( 'No items match your filters.', 'nature-zotero-publications' ); ?></div>
+			<div class="zotero-display-empty" role="status" aria-live="polite" aria-atomic="true" data-wp-bind--hidden="!context.isEmpty" data-wp-text="context.message"><?php esc_html_e( 'No items match your filters.', 'publications-list-display-for-zotero' ); ?></div>
 		</div>
 		<?php
 		$fragment = ob_get_clean();
@@ -439,23 +439,23 @@ class Block {
 		$is_error     = 'error' === $public_state['status'];
 
 		if ( $is_error ) {
-			$message = __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' );
+			$message = __( 'The publication library could not be synchronized. Please try again later.', 'publications-list-display-for-zotero' );
 			if ( current_user_can( 'edit_posts' ) && ! empty( $sync_state['error'] ) ) {
 				$message = sprintf(
 					/* translators: %s: synchronization error message. */
-					__( 'Publications List Display for Zotero synchronization error: %s', 'nature-zotero-publications' ),
+					__( 'Publications List Display for Zotero synchronization error: %s', 'publications-list-display-for-zotero' ),
 					$sync_state['error']
 				);
 			}
 		} elseif ( $total > 0 ) {
 			$message = sprintf(
 				/* translators: 1: processed publication count, 2: total publication count. */
-				__( 'Synchronizing publications: %1$s of %2$s processed.', 'nature-zotero-publications' ),
+				__( 'Synchronizing publications: %1$s of %2$s processed.', 'publications-list-display-for-zotero' ),
 				number_format_i18n( $processed ),
 				number_format_i18n( $total )
 			);
 		} else {
-			$message = __( 'Preparing publication synchronization…', 'nature-zotero-publications' );
+			$message = __( 'Preparing publication synchronization…', 'publications-list-display-for-zotero' );
 		}
 
 		$context       = array(
@@ -473,9 +473,9 @@ class Block {
 			'syncProgressMax'      => max( 1, $total ),
 			'syncMessage'          => $message,
 			/* translators: 1: processed publication count, 2: total publication count. */
-			'syncProgressTemplate' => __( 'Synchronizing publications: %1$s of %2$s processed.', 'nature-zotero-publications' ),
-			'syncPreparingMessage' => __( 'Preparing publication synchronization…', 'nature-zotero-publications' ),
-			'syncErrorMessage'     => __( 'The publication library could not be synchronized. Please try again later.', 'nature-zotero-publications' ),
+			'syncProgressTemplate' => __( 'Synchronizing publications: %1$s of %2$s processed.', 'publications-list-display-for-zotero' ),
+			'syncPreparingMessage' => __( 'Preparing publication synchronization…', 'publications-list-display-for-zotero' ),
+			'syncErrorMessage'     => __( 'The publication library could not be synchronized. Please try again later.', 'publications-list-display-for-zotero' ),
 		);
 		$wrapper_attrs = get_block_wrapper_attributes(
 			array(
@@ -517,7 +517,7 @@ class Block {
 			<p class="zotero-publication-authors"><?php echo esc_html( $item['creator_str'] ); ?></p>
 			<h3 class="zotero-publication-title">
 				<a href="<?php echo esc_url( $item['external_url'] ? $item['external_url'] : $item['zotero_link'] ); ?>" target="_blank" rel="noopener noreferrer">
-					<?php echo esc_html( $item['title'] ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span>
+					<?php echo esc_html( $item['title'] ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span>
 				</a>
 				<?php if ( $item['item_type_label'] ) : ?>
 					<span class="zotero-type-badge"><?php echo esc_html( $item['item_type_label'] ); ?></span>
@@ -528,24 +528,24 @@ class Block {
 					<?php
 					if ( $item['publication'] ) :
 						?>
-						<?php esc_html_e( 'In:', 'nature-zotero-publications' ); ?> <?php echo esc_html( $item['publication'] ); ?><?php endif; ?><?php echo $item['publication'] && $item['date'] ? ', ' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Static punctuation. ?><?php echo esc_html( $item['date'] ); ?>.
+						<?php esc_html_e( 'In:', 'publications-list-display-for-zotero' ); ?> <?php echo esc_html( $item['publication'] ); ?><?php endif; ?><?php echo $item['publication'] && $item['date'] ? ', ' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Static punctuation. ?><?php echo esc_html( $item['date'] ); ?>.
 				</p>
 			<?php endif; ?>
 			<div class="zotero-publication-actions">
 				<?php if ( $attributes['showAbstract'] && $item['abstract'] ) : ?>
-					<details class="zotero-publication-abstract"><summary><?php esc_html_e( 'Abstract', 'nature-zotero-publications' ); ?></summary><p><?php echo esc_html( $item['abstract'] ); ?></p></details>
+					<details class="zotero-publication-abstract"><summary><?php esc_html_e( 'Abstract', 'publications-list-display-for-zotero' ); ?></summary><p><?php echo esc_html( $item['abstract'] ); ?></p></details>
 				<?php endif; ?>
 				<?php if ( $item['doi'] ) : ?>
-					<a href="<?php echo esc_url( $item['doi_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'DOI', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
+					<a href="<?php echo esc_url( $item['doi_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'DOI', 'publications-list-display-for-zotero' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a>
 				<?php endif; ?>
 				<?php if ( $item['source_url'] ) : ?>
-					<a href="<?php echo esc_url( $item['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Source', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
+					<a href="<?php echo esc_url( $item['source_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Source', 'publications-list-display-for-zotero' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a>
 				<?php endif; ?>
-				<a href="<?php echo esc_url( $item['zotero_link'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Zotero', 'nature-zotero-publications' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'nature-zotero-publications' ); ?>)</span></a>
+				<a href="<?php echo esc_url( $item['zotero_link'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Zotero', 'publications-list-display-for-zotero' ); ?><span class="screen-reader-text"> (<?php esc_html_e( 'opens in a new tab', 'publications-list-display-for-zotero' ); ?>)</span></a>
 				<?php
 				if ( $item['citation_key'] ) :
 					?>
-					<span><?php esc_html_e( 'Citation key:', 'nature-zotero-publications' ); ?> <code><?php echo esc_html( $item['citation_key'] ); ?></code></span><?php endif; ?>
+					<span><?php esc_html_e( 'Citation key:', 'publications-list-display-for-zotero' ); ?> <code><?php echo esc_html( $item['citation_key'] ); ?></code></span><?php endif; ?>
 			</div>
 		</article>
 		<?php

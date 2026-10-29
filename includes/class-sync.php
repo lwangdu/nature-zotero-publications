@@ -119,7 +119,7 @@ class Sync {
 		if ( ! is_string( $library_id ) || ! preg_match( '/\A[0-9]+\z/', $library_id ) ) {
 			return new \WP_Error(
 				'zotero_display_invalid_library_id',
-				__( 'The Zotero library ID must contain only digits.', 'nature-zotero-publications' ),
+				__( 'The Zotero library ID must contain only digits.', 'publications-list-display-for-zotero' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -127,14 +127,14 @@ class Sync {
 		if ( ! is_string( $collection ) || ( '' !== $collection && ! preg_match( '/\A[A-Z0-9]{8}\z/', $collection ) ) ) {
 			return new \WP_Error(
 				'zotero_display_invalid_collection',
-				__( 'The Zotero collection key must contain exactly eight uppercase letters or digits, or be empty for the whole library.', 'nature-zotero-publications' ),
+				__( 'The Zotero collection key must contain exactly eight uppercase letters or digits, or be empty for the whole library.', 'publications-list-display-for-zotero' ),
 				array( 'status' => 400 )
 			);
 		}
 
 		$sorts = array( 'date', 'title', 'creator', 'dateAdded', 'dateModified', 'publicationTitle', 'itemType', 'publisher', 'journalAbbreviation', 'language', 'accessDate', 'libraryCatalog', 'callNumber', 'rights', 'addedBy' );
 		if ( ! in_array( $args['sort'] ?? 'date', $sorts, true ) || ! in_array( $args['direction'] ?? 'desc', array( 'asc', 'desc' ), true ) ) {
-			return new \WP_Error( 'zotero_display_invalid_sort', __( 'Choose a supported Zotero sort and direction.', 'nature-zotero-publications' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'zotero_display_invalid_sort', __( 'Choose a supported Zotero sort and direction.', 'publications-list-display-for-zotero' ), array( 'status' => 400 ) );
 		}
 		return true;
 	}
@@ -622,7 +622,7 @@ class Sync {
 
 			$json = wp_json_encode( $item, JSON_INVALID_UTF8_SUBSTITUTE );
 			if ( false === $json ) {
-				return new \WP_Error( 'zotero_invalid_item_json', __( 'A Zotero item could not be encoded for storage.', 'nature-zotero-publications' ) );
+				return new \WP_Error( 'zotero_invalid_item_json', __( 'A Zotero item could not be encoded for storage.', 'publications-list-display-for-zotero' ) );
 			}
 			// Use the repaired strings for every column, not just the JSON payload.
 			$item        = json_decode( $json, true );
@@ -710,7 +710,7 @@ class Sync {
 		foreach ( $rows as $row ) {
 			$prepared = $wpdb->prepare( $row_placeholder, $row ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Fixed format list supplied by internal callers.
 			if ( strlen( $prepared ) + strlen( $prefix ) > 524288 ) {
-				return new \WP_Error( 'zotero_item_too_large', __( 'A Zotero index row exceeds the 512 KiB write limit. Reduce the item metadata before retrying.', 'nature-zotero-publications' ) );
+				return new \WP_Error( 'zotero_item_too_large', __( 'A Zotero index row exceeds the 512 KiB write limit. Reduce the item metadata before retrying.', 'publications-list-display-for-zotero' ) );
 			}
 			if ( $chunk && ( count( $chunk ) >= self::WRITE_BATCH_SIZE || $bytes + strlen( $prepared ) + 2 > 524288 ) ) {
 				$chunks[] = $chunk;
@@ -726,7 +726,7 @@ class Sync {
 		foreach ( $chunks as $chunk ) {
 			$result = $wpdb->query( $prefix . implode( ', ', $chunk ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Internal fixed column names; table identifier and all row values prepared above, bounded by actual SQL bytes.
 			if ( false === $result ) {
-				return new \WP_Error( 'zotero_display_index_write_failed', __( 'Unable to update the local Zotero publication index.', 'nature-zotero-publications' ) );
+				return new \WP_Error( 'zotero_display_index_write_failed', __( 'Unable to update the local Zotero publication index.', 'publications-list-display-for-zotero' ) );
 			}
 		}
 
@@ -984,11 +984,11 @@ class Sync {
 			// Do not expose arbitrary transport messages, URLs, SQL, or credentials.
 			$error = '';
 			if ( ! empty( $state['error'] ) ) {
-				$error = __( 'Synchronization failed. Check Zotero access and database health.', 'nature-zotero-publications' );
+				$error = __( 'Synchronization failed. Check Zotero access and database health.', 'publications-list-display-for-zotero' );
 				if ( preg_match( '/HTTP ([0-9]{3})/', $state['error'], $match ) ) {
 					$error = 'HTTP ' . $match[1];
 				} elseif ( str_contains( $state['error'], 'cURL error 28' ) ) {
-					$error = __( 'Zotero request timed out.', 'nature-zotero-publications' );
+					$error = __( 'Zotero request timed out.', 'publications-list-display-for-zotero' );
 				}
 			}
 			$rows[ $key ] = array(

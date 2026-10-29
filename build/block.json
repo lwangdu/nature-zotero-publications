@@ -12,7 +12,7 @@
     "citations",
     "references"
   ],
-  "textdomain": "nature-zotero-publications",
+  "textdomain": "publications-list-display-for-zotero",
   "attributes": {
     "libraryType": {
       "type": "string",

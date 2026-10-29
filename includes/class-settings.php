@@ -54,10 +54,10 @@ class Settings {
 	 */
 	public function add_settings_page() {
 		add_options_page(
-			__( 'Publications List Display for Zotero', 'nature-zotero-publications' ),
-			__( 'Publications List Display for Zotero', 'nature-zotero-publications' ),
+			__( 'Publications List Display for Zotero', 'publications-list-display-for-zotero' ),
+			__( 'Publications List Display for Zotero', 'publications-list-display-for-zotero' ),
 			'manage_options',
-			'nature-zotero-publications',
+			'publications-list-display-for-zotero',
 			array( $this, 'render_settings_page' )
 		);
 	}
@@ -105,7 +105,7 @@ class Settings {
 			add_settings_error(
 				self::OPTION_KEY,
 				'zotero_display_invalid_library_id',
-				__( 'The library ID must contain only digits, or be empty. The previous library ID has been retained.', 'nature-zotero-publications' )
+				__( 'The library ID must contain only digits, or be empty. The previous library ID has been retained.', 'publications-list-display-for-zotero' )
 			);
 			$library_id = $stored['library_id'] ?? '';
 		}
@@ -180,14 +180,14 @@ class Settings {
 	 */
 	public function handle_clear_cache() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'nature-zotero-publications' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'publications-list-display-for-zotero' ) );
 		}
 		check_admin_referer( 'zotero_display_clear_cache' );
 
 		Zotero_API::clear_all_caches();
 		Sync::clear_all();
 
-		wp_safe_redirect( add_query_arg( 'zotero_cache_cleared', '1', wp_get_referer() ? wp_get_referer() : admin_url( 'options-general.php?page=nature-zotero-publications' ) ) );
+		wp_safe_redirect( add_query_arg( 'zotero_cache_cleared', '1', wp_get_referer() ? wp_get_referer() : admin_url( 'options-general.php?page=publications-list-display-for-zotero' ) ) );
 		exit;
 	}
 
@@ -203,11 +203,11 @@ class Settings {
 		$settings = self::get_settings();
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Publications List Display for Zotero Settings', 'nature-zotero-publications' ); ?></h1>
+			<h1><?php esc_html_e( 'Publications List Display for Zotero Settings', 'publications-list-display-for-zotero' ); ?></h1>
 
 			<?php if ( isset( $_GET['zotero_cache_cleared'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'Zotero cache cleared.', 'nature-zotero-publications' ); ?></p>
+					<p><?php esc_html_e( 'Zotero cache cleared.', 'publications-list-display-for-zotero' ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -215,34 +215,34 @@ class Settings {
 				<?php settings_fields( 'zotero_display_settings_group' ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><label for="zotero_api_key"><?php esc_html_e( 'Zotero API Key', 'nature-zotero-publications' ); ?></label></th>
+						<th scope="row"><label for="zotero_api_key"><?php esc_html_e( 'Zotero API Key', 'publications-list-display-for-zotero' ); ?></label></th>
 						<td>
 							<input type="password" id="zotero_api_key" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[api_key]" value="" <?php disabled( defined( 'ZOTERO_DISPLAY_API_KEY' ) ); ?> class="regular-text" autocomplete="off" />
-							<p class="description"><?php esc_html_e( 'Leave blank to keep the saved key. Required for private libraries/groups. A ZOTERO_DISPLAY_API_KEY constant in wp-config.php overrides this field.', 'nature-zotero-publications' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Leave blank to keep the saved key. Required for private libraries/groups. A ZOTERO_DISPLAY_API_KEY constant in wp-config.php overrides this field.', 'publications-list-display-for-zotero' ); ?></p>
 							<?php if ( ! defined( 'ZOTERO_DISPLAY_API_KEY' ) ) : ?>
-								<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[remove_api_key]" value="1" /> <?php esc_html_e( 'Remove the saved API key', 'nature-zotero-publications' ); ?></label>
+								<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[remove_api_key]" value="1" /> <?php esc_html_e( 'Remove the saved API key', 'publications-list-display-for-zotero' ); ?></label>
 							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="zotero_library_type"><?php esc_html_e( 'Default Library Type', 'nature-zotero-publications' ); ?></label></th>
+						<th scope="row"><label for="zotero_library_type"><?php esc_html_e( 'Default Library Type', 'publications-list-display-for-zotero' ); ?></label></th>
 						<td>
 							<select id="zotero_library_type" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[library_type]">
-								<option value="user" <?php selected( $settings['library_type'], 'user' ); ?>><?php esc_html_e( 'User Library', 'nature-zotero-publications' ); ?></option>
-								<option value="group" <?php selected( $settings['library_type'], 'group' ); ?>><?php esc_html_e( 'Group Library', 'nature-zotero-publications' ); ?></option>
+								<option value="user" <?php selected( $settings['library_type'], 'user' ); ?>><?php esc_html_e( 'User Library', 'publications-list-display-for-zotero' ); ?></option>
+								<option value="group" <?php selected( $settings['library_type'], 'group' ); ?>><?php esc_html_e( 'Group Library', 'publications-list-display-for-zotero' ); ?></option>
 							</select>
-							<p class="description"><?php esc_html_e( 'Can be overridden per-block.', 'nature-zotero-publications' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Can be overridden per-block.', 'publications-list-display-for-zotero' ); ?></p>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="zotero_library_id"><?php esc_html_e( 'Default Library / Group ID', 'nature-zotero-publications' ); ?></label></th>
+						<th scope="row"><label for="zotero_library_id"><?php esc_html_e( 'Default Library / Group ID', 'publications-list-display-for-zotero' ); ?></label></th>
 						<td>
 							<input type="text" inputmode="numeric" pattern="[0-9]+" id="zotero_library_id" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[library_id]" value="<?php echo esc_attr( $settings['library_id'] ); ?>" class="regular-text" />
-							<p class="description"><?php esc_html_e( 'Find your numeric user ID at zotero.org/settings/keys, or the group ID in your group library URL.', 'nature-zotero-publications' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Find your numeric user ID at zotero.org/settings/keys, or the group ID in your group library URL.', 'publications-list-display-for-zotero' ); ?></p>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="zotero_cache_minutes"><?php esc_html_e( 'Cache Duration (minutes)', 'nature-zotero-publications' ); ?></label></th>
+						<th scope="row"><label for="zotero_cache_minutes"><?php esc_html_e( 'Cache Duration (minutes)', 'publications-list-display-for-zotero' ); ?></label></th>
 						<td>
 							<input type="number" min="1" id="zotero_cache_minutes" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[cache_minutes]" value="<?php echo esc_attr( $settings['cache_minutes'] ); ?>" class="small-text" />
 						</td>
@@ -253,12 +253,12 @@ class Settings {
 
 			<?php $this->render_diagnostics(); ?>
 			<hr />
-			<h2><?php esc_html_e( 'Cache', 'nature-zotero-publications' ); ?></h2>
-			<p><?php esc_html_e( 'Force-refresh all cached Zotero data immediately (otherwise it refreshes automatically based on the cache duration above).', 'nature-zotero-publications' ); ?></p>
+			<h2><?php esc_html_e( 'Cache', 'publications-list-display-for-zotero' ); ?></h2>
+			<p><?php esc_html_e( 'Force-refresh all cached Zotero data immediately (otherwise it refreshes automatically based on the cache duration above).', 'publications-list-display-for-zotero' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="zotero_display_clear_cache" />
 				<?php wp_nonce_field( 'zotero_display_clear_cache' ); ?>
-				<?php submit_button( __( 'Clear Zotero Cache', 'nature-zotero-publications' ), 'secondary' ); ?>
+				<?php submit_button( __( 'Clear Zotero Cache', 'publications-list-display-for-zotero' ), 'secondary' ); ?>
 			</form>
 		</div>
 		<?php
@@ -270,12 +270,12 @@ class Settings {
 	 */
 	public function handle_diagnostic_batch() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'nature-zotero-publications' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'publications-list-display-for-zotero' ) );
 		}
 		check_admin_referer( 'zotero_display_diagnostic_batch' );
 		$key = isset( $_POST['source'] ) && is_string( $_POST['source'] ) ? sanitize_key( wp_unslash( $_POST['source'] ) ) : '';
 		Sync::diagnostic_batch( $key );
-		wp_safe_redirect( admin_url( 'options-general.php?page=nature-zotero-publications#zotero-diagnostics' ) );
+		wp_safe_redirect( admin_url( 'options-general.php?page=publications-list-display-for-zotero#zotero-diagnostics' ) );
 		exit;
 	}
 
@@ -289,40 +289,40 @@ class Settings {
 		$settings = self::get_settings();
 		?>
 		<hr />
-		<h2 id="zotero-diagnostics"><?php esc_html_e( 'Synchronization diagnostics', 'nature-zotero-publications' ); ?></h2>
-		<p><?php esc_html_e( 'This panel shows the default source and up to 100 recently stored block sources. Open the frontend page to register a block override. Refresh this settings page to see updated results.', 'nature-zotero-publications' ); ?></p>
-		<p><?php echo esc_html( empty( $settings['api_key'] ) ? __( 'API key: not configured.', 'nature-zotero-publications' ) : __( 'API key: configured (permissions not verified).', 'nature-zotero-publications' ) ); ?></p>
-		<p><?php echo esc_html( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? __( 'Traffic-triggered WP-Cron is disabled. A host scheduler is required.', 'nature-zotero-publications' ) : __( 'Traffic-triggered WP-Cron is enabled; this does not verify execution.', 'nature-zotero-publications' ) ); ?></p>
+		<h2 id="zotero-diagnostics"><?php esc_html_e( 'Synchronization diagnostics', 'publications-list-display-for-zotero' ); ?></h2>
+		<p><?php esc_html_e( 'This panel shows the default source and up to 100 recently stored block sources. Open the frontend page to register a block override. Refresh this settings page to see updated results.', 'publications-list-display-for-zotero' ); ?></p>
+		<p><?php echo esc_html( empty( $settings['api_key'] ) ? __( 'API key: not configured.', 'publications-list-display-for-zotero' ) : __( 'API key: configured (permissions not verified).', 'publications-list-display-for-zotero' ) ); ?></p>
+		<p><?php echo esc_html( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? __( 'Traffic-triggered WP-Cron is disabled. A host scheduler is required.', 'publications-list-display-for-zotero' ) : __( 'Traffic-triggered WP-Cron is enabled; this does not verify execution.', 'publications-list-display-for-zotero' ) ); ?></p>
 		<ul>
 		<?php foreach ( $report['tables'] as $table => $healthy ) : ?>
-			<li><code><?php echo esc_html( $table ); ?></code>: <?php echo esc_html( $healthy ? __( 'Readable', 'nature-zotero-publications' ) : __( 'Missing or unreadable', 'nature-zotero-publications' ) ); ?></li>
+			<li><code><?php echo esc_html( $table ); ?></code>: <?php echo esc_html( $healthy ? __( 'Readable', 'publications-list-display-for-zotero' ) : __( 'Missing or unreadable', 'publications-list-display-for-zotero' ) ); ?></li>
 		<?php endforeach; ?>
 		</ul>
 		<?php if ( empty( $report['sources'] ) ) : ?>
-			<p><?php esc_html_e( 'No valid source found. Save a numeric default library ID above or open a configured block on the frontend.', 'nature-zotero-publications' ); ?></p>
+			<p><?php esc_html_e( 'No valid source found. Save a numeric default library ID above or open a configured block on the frontend.', 'publications-list-display-for-zotero' ); ?></p>
 		<?php endif; ?>
 		<?php foreach ( $report['sources'] as $key => $row ) : ?>
 			<h3><?php echo esc_html( $row['args']['library_type'] . ' / ' . $row['args']['library_id'] . ' / ' . $row['args']['collection'] . ' / ' . $row['args']['sort'] . ' / ' . $row['args']['direction'] ); ?></h3>
-			<p><?php echo esc_html( sprintf( /* translators: 1: status, 2: processed count, 3: total count. */ __( 'Status: %1$s. Processed: %2$d / %3$d.', 'nature-zotero-publications' ), $row['status'], $row['processed'], $row['total'] ) ); ?></p>
-			<p><?php esc_html_e( 'Next scheduled batch:', 'nature-zotero-publications' ); ?> <?php echo esc_html( $row['next'] ? wp_date( 'Y-m-d H:i:s T', $row['next'] ) : __( 'None', 'nature-zotero-publications' ) ); ?></p>
-			<p><?php esc_html_e( 'Retry not before:', 'nature-zotero-publications' ); ?> <?php echo esc_html( $row['retry'] ? wp_date( 'Y-m-d H:i:s T', $row['retry'] ) : __( 'No pending retry deadline', 'nature-zotero-publications' ) ); ?></p>
+			<p><?php echo esc_html( sprintf( /* translators: 1: status, 2: processed count, 3: total count. */ __( 'Status: %1$s. Processed: %2$d / %3$d.', 'publications-list-display-for-zotero' ), $row['status'], $row['processed'], $row['total'] ) ); ?></p>
+			<p><?php esc_html_e( 'Next scheduled batch:', 'publications-list-display-for-zotero' ); ?> <?php echo esc_html( $row['next'] ? wp_date( 'Y-m-d H:i:s T', $row['next'] ) : __( 'None', 'publications-list-display-for-zotero' ) ); ?></p>
+			<p><?php esc_html_e( 'Retry not before:', 'publications-list-display-for-zotero' ); ?> <?php echo esc_html( $row['retry'] ? wp_date( 'Y-m-d H:i:s T', $row['retry'] ) : __( 'No pending retry deadline', 'publications-list-display-for-zotero' ) ); ?></p>
 			<?php if ( $row['schedule_error'] ) : ?>
-				<p><?php esc_html_e( 'WordPress rejected the last scheduling attempt.', 'nature-zotero-publications' ); ?></p>
+				<p><?php esc_html_e( 'WordPress rejected the last scheduling attempt.', 'publications-list-display-for-zotero' ); ?></p>
 			<?php endif; ?>
 			<?php if ( $row['error'] ) : ?>
 				<p><?php echo esc_html( $row['error'] ); ?></p>
 			<?php endif; ?>
 			<?php if ( $row['admin_detail'] ) : ?>
-				<p><strong><?php esc_html_e( 'Response explanation:', 'nature-zotero-publications' ); ?></strong> <?php echo esc_html( $row['admin_detail'] ); ?></p>
+				<p><strong><?php esc_html_e( 'Response explanation:', 'publications-list-display-for-zotero' ); ?></strong> <?php echo esc_html( $row['admin_detail'] ); ?></p>
 			<?php endif; ?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="zotero_display_diagnostic_batch" />
 				<input type="hidden" name="source" value="<?php echo esc_attr( $key ); ?>" />
 				<?php wp_nonce_field( 'zotero_display_diagnostic_batch' ); ?>
-				<?php submit_button( __( 'Run one sync batch', 'nature-zotero-publications' ), 'secondary', 'submit', false, in_array( false, $report['tables'], true ) ? array( 'disabled' => 'disabled' ) : array() ); ?>
+				<?php submit_button( __( 'Run one sync batch', 'publications-list-display-for-zotero' ), 'secondary', 'submit', false, in_array( false, $report['tables'], true ) ? array( 'disabled' => 'disabled' ) : array() ); ?>
 			</form>
 		<?php endforeach; ?>
-		<p><?php esc_html_e( 'A manual run processes at most 100 items and may wait up to 20 seconds for Zotero. Locks and retry delays remain enforced; a fresh completed source does not need a new batch. Existing publications are preserved.', 'nature-zotero-publications' ); ?></p>
+		<p><?php esc_html_e( 'A manual run processes at most 100 items and may wait up to 20 seconds for Zotero. Locks and retry delays remain enforced; a fresh completed source does not need a new batch. Existing publications are preserved.', 'publications-list-display-for-zotero' ); ?></p>
 		<?php
 	}
 }

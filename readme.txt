@@ -117,9 +117,13 @@ Privacy policy: https://www.zotero.org/support/privacy
 
 This plugin is independently developed and is not endorsed by Zotero.
 
+= Updating an existing installation after the rename =
+
+Deactivate the previous plugin before installing this renamed package. Install and activate Publications List Display for Zotero, then verify settings and existing bibliography blocks. The registered block, settings, database tables, and synchronization hooks retain their existing identifiers to preserve data. Do not activate both copies together. Remove the old plugin folder through your file manager or SFTP only after verification; do not click Delete for the old plugin in WordPress, because its uninstall routine removes the shared settings and publication index. Back up the database before replacement.
+
 == Installation ==
 
-1. Upload the plugin files to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP through the WordPress Plugins screen.
+1. Upload the plugin files to `/wp-content/plugins/publications-list-display-for-zotero`, or install the release ZIP through the WordPress Plugins screen.
 2. Activate Publications List Display for Zotero.
 3. Open Settings > Publications List Display for Zotero.
 4. Enter the Zotero library type, library ID, optional private API key, and cache duration. Group Library is the default for new configurations; existing saved choices are preserved.
@@ -222,4 +226,4 @@ Source retention: removing a block does not remove its indexed source because an
 
 API credentials: prefer the server-side ZOTERO_DISPLAY_API_KEY constant where hosting permits it. Saved settings are not autoloaded; existing installations are updated when an administrator visits settings.
 
-Readable JavaScript is included in src/ in the ZIP. Developer tooling and tests are available from https://github.com/lwangdu/nature-zotero-publications; clone the repository to run the documented npm tests and build commands.
+Readable JavaScript is included in src/ in the ZIP. Developer tooling and tests are available from https://github.com/lwangdu/publications-list-display-for-zotero; clone the repository to run the documented npm tests and build commands.

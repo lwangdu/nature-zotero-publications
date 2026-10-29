@@ -83,9 +83,13 @@ Recent updates cache completed server-rendered block fragments, default block an
 
 The cache-duration setting controls when a completed source becomes eligible for another background refresh. Changing connection settings or selecting **Clear Zotero Cache** removes both transient data and the local index so the source can synchronize again.
 
+## Updating an existing installation after the rename
+
+Deactivate the previous plugin before installing this renamed package. Install and activate Publications List Display for Zotero, then verify settings and existing bibliography blocks. The registered block, settings, database tables, and synchronization hooks retain their existing identifiers to preserve data. Do not activate both copies together. Remove the old plugin folder through your file manager or SFTP only after verification; do not click Delete for the old plugin in WordPress, because its uninstall routine removes the shared settings and publication index. Back up the database before replacement.
+
 ## Installation and configuration
 
-1. Upload the plugin to `/wp-content/plugins/nature-zotero-publications`, or install the release ZIP in WordPress.
+1. Upload the plugin to `/wp-content/plugins/publications-list-display-for-zotero`, or install the release ZIP in WordPress.
 2. Activate **Publications List Display for Zotero**.
 3. Open **Settings → Publications List Display for Zotero**.
 4. Select the default library type: **User Library** or **Group Library**. Group Library is the default for new configurations; existing saved choices are preserved.
@@ -175,7 +179,7 @@ The build uses `wp-scripts build --experimental-modules` so `viewScriptModule` c
 ## Project structure
 
 ```text
-nature-zotero-publications.php Plugin bootstrap, version, activation hooks
+publications-list-display-for-zotero.php Plugin bootstrap, version, activation hooks
 includes/
   class-zotero-api.php          Zotero API client and transient fallback
   class-sync.php                Background synchronization and local index
@@ -319,6 +323,6 @@ Source retention: removing a block does not remove its indexed source because an
 
 API credentials: prefer the server-side ZOTERO_DISPLAY_API_KEY constant where hosting permits it. Saved settings are not autoloaded; existing installations are updated when an administrator visits settings.
 
-Readable JavaScript is included in src/ in the ZIP. Developer tooling and tests are available from https://github.com/lwangdu/nature-zotero-publications; clone the repository to run the documented npm tests and build commands.
+Readable JavaScript is included in src/ in the ZIP. Developer tooling and tests are available from https://github.com/lwangdu/publications-list-display-for-zotero; clone the repository to run the documented npm tests and build commands.
 
 Audit regression coverage: `npm run test:js` verifies plain/pretty REST URL construction and legacy cached markup. `npm run test:php` also checks cooldown preservation, cache slot deletion, malformed metadata, DOI encoding, byte-bounded writes, and the public request allowance. These use isolated stubs rather than live Redis/MariaDB. Existing indexed items adopt the updated normalization on the next stale refresh; the completed index remains readable while it refreshes.

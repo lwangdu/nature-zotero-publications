@@ -31,7 +31,7 @@ class Zotero_API {
 		}
 		$retry_at = (int) get_transient( 'zotero_display_backoff' );
 		if ( $retry_at > time() ) {
-			return new \WP_Error( 'zotero_backoff', __( 'Waiting before retrying Zotero.', 'nature-zotero-publications' ), array( 'retry_after' => $retry_at - time() ) );
+			return new \WP_Error( 'zotero_backoff', __( 'Waiting before retrying Zotero.', 'publications-list-display-for-zotero' ), array( 'retry_after' => $retry_at - time() ) );
 		}
 		$library_segment = ( 'group' === $args['library_type'] ) ? 'groups' : 'users';
 		$path            = sprintf( '/%s/%s/items/top', $library_segment, rawurlencode( $args['library_id'] ) );
@@ -95,7 +95,7 @@ class Zotero_API {
 				'zotero_api_error',
 				sprintf(
 					/* translators: %d: HTTP status code */
-					__( 'Zotero API returned an error (HTTP %d).', 'nature-zotero-publications' ),
+					__( 'Zotero API returned an error (HTTP %d).', 'publications-list-display-for-zotero' ),
 					$code
 				),
 				array(
@@ -108,7 +108,7 @@ class Zotero_API {
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $body ) ) {
-			return new \WP_Error( 'zotero_invalid_response', __( 'Zotero API returned an unreadable response.', 'nature-zotero-publications' ) );
+			return new \WP_Error( 'zotero_invalid_response', __( 'Zotero API returned an unreadable response.', 'publications-list-display-for-zotero' ) );
 		}
 
 		$items = array();
@@ -138,7 +138,7 @@ class Zotero_API {
 		$body = (string) wp_remote_retrieve_body( $response );
 		$type = strtolower( (string) wp_remote_retrieve_header( $response, 'content-type' ) );
 		if ( str_contains( $type, 'html' ) || preg_match( '/<\s*(?:!doctype|html|body)/i', $body ) ) {
-			$details = array( __( 'Zotero response details', 'nature-zotero-publications' ) );
+			$details = array( __( 'Zotero response details', 'publications-list-display-for-zotero' ) );
 			// Read only identifying headers, never cookies, authentication or locations.
 			foreach ( array( 'content-type', 'server', 'via', 'zotero-api-version' ) as $header ) {
 				$value = wp_remote_retrieve_header( $response, $header );
@@ -158,12 +158,12 @@ class Zotero_API {
 					$details[] = 'body: ' . self::redact_diagnostic_text( $body, $api_key );
 				}
 			} else {
-				$details[] = __( 'HTML body omitted because it exceeds the diagnostic size limit.', 'nature-zotero-publications' );
+				$details[] = __( 'HTML body omitted because it exceeds the diagnostic size limit.', 'publications-list-display-for-zotero' );
 			}
 			return implode( ' | ', $details );
 		}
 		if ( strlen( $body ) > 4096 ) {
-			return __( 'The error response was too large to display safely.', 'nature-zotero-publications' );
+			return __( 'The error response was too large to display safely.', 'publications-list-display-for-zotero' );
 		}
 		$json = json_decode( $body, true );
 		if ( is_array( $json ) ) {
@@ -182,7 +182,7 @@ class Zotero_API {
 	 */
 	private static function redact_diagnostic_text( $body, $api_key ) {
 		if ( strlen( $body ) > 32768 ) {
-			return __( 'Diagnostic value omitted because it exceeds the size limit.', 'nature-zotero-publications' );
+			return __( 'Diagnostic value omitted because it exceeds the size limit.', 'publications-list-display-for-zotero' );
 		}
 		$body = html_entity_decode( rawurldecode( $body ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 		$body = wp_strip_all_tags( $body );
@@ -195,7 +195,7 @@ class Zotero_API {
 		$body = preg_replace( '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email removed]', $body );
 		$body = preg_replace( '/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/', '[IP removed]', $body );
 		$body = sanitize_text_field( $body );
-		return '' !== $body ? mb_substr( $body, 0, 400, 'UTF-8' ) : __( 'No plain-text explanation was returned.', 'nature-zotero-publications' );
+		return '' !== $body ? mb_substr( $body, 0, 400, 'UTF-8' ) : __( 'No plain-text explanation was returned.', 'publications-list-display-for-zotero' );
 	}
 
 	/**
@@ -267,9 +267,9 @@ class Zotero_API {
 
 		return array(
 			'key'             => $item_key,
-			'title'           => isset( $data['title'] ) && is_string( $data['title'] ) && '' !== $data['title'] ? $data['title'] : __( 'Untitled', 'nature-zotero-publications' ),
+			'title'           => isset( $data['title'] ) && is_string( $data['title'] ) && '' !== $data['title'] ? $data['title'] : __( 'Untitled', 'publications-list-display-for-zotero' ),
 			'creators'        => $creators,
-			'creator_str'     => $creators ? implode( ', ', $creators ) : __( 'Unknown author', 'nature-zotero-publications' ),
+			'creator_str'     => $creators ? implode( ', ', $creators ) : __( 'Unknown author', 'publications-list-display-for-zotero' ),
 			'date'            => isset( $data['date'] ) ? $data['date'] : '',
 			'date_year'       => self::extract_year( isset( $data['date'] ) ? $data['date'] : '' ),
 			'doi'             => $doi,

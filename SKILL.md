@@ -1,10 +1,10 @@
 ---
-name: nature-zotero-publications
+name: publications-list-display-for-zotero
 description: Develop, debug, review, or prepare releases for the Publications List Display for Zotero WordPress plugin, including its dynamic bibliography block, Zotero synchronization, REST endpoints, and frontend interactivity. Use for this plugin's implementation and maintenance, not general Zotero research.
 license: GPL-2.0-or-later
 metadata:
   project-type: wordpress-plugin
-  text-domain: nature-zotero-publications
+  text-domain: publications-list-display-for-zotero
 ---
 
 # Publications List Display for Zotero
@@ -41,7 +41,7 @@ before editing.
 
 | Concern | Start with |
 | --- | --- |
-| Bootstrap, constants, lifecycle hooks, Plugins screen links | `nature-zotero-publications.php` |
+| Bootstrap, constants, lifecycle hooks, Plugins screen links | `publications-list-display-for-zotero.php` |
 | Settings, API key storage, default source, manual cache clearing | `includes/class-settings.php` |
 | Dynamic rendering, fragment cache, initial state, accessible markup | `includes/class-block.php` |
 | Items and author-autocomplete REST endpoints | `includes/class-rest-controller.php` |
@@ -148,7 +148,7 @@ Update only the layers required by the change.
   behavior after the suggestion list closes.
 - Avoid excessive live-region announcements and unexpected focus moves.
 - Keep PHP and JavaScript labels consistent and translatable using
-  `nature-zotero-publications`.
+  `publications-list-display-for-zotero`.
 - Add translator comments for substitution placeholders and
   ambiguous wording.
 - Verify changed Interactivity API exports, directives, and async

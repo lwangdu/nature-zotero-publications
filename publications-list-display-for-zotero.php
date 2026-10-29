@@ -8,7 +8,7 @@
  * Author:             Lobsang Wangdu
  * License:            GPL-2.0-or-later
  * License URI:        https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:        nature-zotero-publications
+ * Text Domain:        publications-list-display-for-zotero
  *
  * @package ZoteroDisplay
  */
@@ -37,8 +37,8 @@ require_once ZOTERO_DISPLAY_DIR . 'includes/class-block.php';
 function zotero_display_plugin_action_links( $links ) {
 	$settings_link = sprintf(
 		'<a href="%1$s">%2$s</a>',
-		esc_url( admin_url( 'options-general.php?page=nature-zotero-publications' ) ),
-		esc_html__( 'Settings', 'nature-zotero-publications' )
+		esc_url( admin_url( 'options-general.php?page=publications-list-display-for-zotero' ) ),
+		esc_html__( 'Settings', 'publications-list-display-for-zotero' )
 	);
 
 	array_unshift( $links, $settings_link );

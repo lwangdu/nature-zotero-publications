@@ -227,7 +227,7 @@ class REST_Controller {
 		if ( empty( $signature ) || ! hash_equals( $expected, $signature ) ) {
 			return new \WP_Error(
 				'zotero_display_invalid_source',
-				__( 'This Zotero source is not available from the public API.', 'nature-zotero-publications' ),
+				__( 'This Zotero source is not available from the public API.', 'publications-list-display-for-zotero' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -243,7 +243,7 @@ class REST_Controller {
 			set_transient( $key, $count, 60 );
 		}
 		if ( $count > 120 ) {
-			return new \WP_Error( 'zotero_display_rate_limit', __( 'Too many publication requests. Please wait a minute and retry.', 'nature-zotero-publications' ), array( 'status' => 429 ) );
+			return new \WP_Error( 'zotero_display_rate_limit', __( 'Too many publication requests. Please wait a minute and retry.', 'publications-list-display-for-zotero' ), array( 'status' => 429 ) );
 		}
 		return true;
 	}
@@ -263,7 +263,7 @@ class REST_Controller {
 		if ( empty( $query_args['library_id'] ) ) {
 			return new \WP_Error(
 				'zotero_display_no_library',
-				__( 'No Zotero library ID configured. Set one in Settings → Publications List Display for Zotero, or on this block.', 'nature-zotero-publications' ),
+				__( 'No Zotero library ID configured. Set one in Settings → Publications List Display for Zotero, or on this block.', 'publications-list-display-for-zotero' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -340,7 +340,7 @@ class REST_Controller {
 		if ( empty( $query_args['library_id'] ) ) {
 			return new \WP_Error(
 				'zotero_display_no_library',
-				__( 'No Zotero library ID configured.', 'nature-zotero-publications' ),
+				__( 'No Zotero library ID configured.', 'publications-list-display-for-zotero' ),
 				array( 'status' => 400 )
 			);
 		}

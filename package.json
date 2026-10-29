@@ -1,5 +1,5 @@
 {
-	"name": "nature-zotero-publications",
+	"name": "publications-list-display-for-zotero",
 	"version": "1.0.7",
 	"description": "Display live Zotero library data as a searchable, filterable Gutenberg bibliography.",
 	"private": true,
@@ -18,7 +18,7 @@
 		"build/",
 		"includes/",
 		"src/",
-		"nature-zotero-publications.php",
+		"publications-list-display-for-zotero.php",
 		"uninstall.php",
 		"README.md",
 		"readme.txt",
